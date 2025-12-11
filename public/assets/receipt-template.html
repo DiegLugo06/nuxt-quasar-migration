@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Recibo de Entrega de Producto</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f3f3f3;
+      }
+      .container {
+        width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: white;
+        border: 1px solid #000;
+      }
+      h1 {
+        text-align: center;
+        font-size: 24px;
+        margin-bottom: 10px;
+      }
+      .subtitle {
+        text-align: center;
+        font-size: 14px;
+        margin-bottom: 20px;
+      }
+      .section-title {
+        font-weight: bold;
+        font-size: 16px;
+        margin: 15px 0;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+      .row label {
+        width: 45%;
+        display: inline-block;
+        font-size: 14px;
+      }
+      .full-width {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+      .input {
+        width: 100%;
+        padding: 8px;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+      .important {
+        text-align: center;
+        font-weight: bold;
+        font-size: 14px;
+        margin: 20px 0;
+      }
+      .sign-section {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 30px;
+      }
+      .sign-section div {
+        text-align: center;
+        font-size: 14px;
+      }
+      .note {
+        font-size: 10px;
+        text-align: center;
+        margin-top: 20px;
+        color: gray;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Recibo de entrega de producto</h1>
+      <p class="subtitle">Por favor completar en letra mayúscula.</p>
+
+      <div class="section-title">1. Datos de quien recibe el artículo</div>
+      <div class="row">
+        <label>
+          Nombre completo:
+          <input type="text" class="input" />
+        </label>
+        <label>
+          Fecha Nacimiento:
+          <input type="date" class="input" />
+        </label>
+      </div>
+      <div class="row">
+        <label>
+          Número de cédula:
+          <input type="text" class="input" />
+        </label>
+        <label>
+          Teléfono:
+          <input type="text" class="input" />
+        </label>
+      </div>
+      <label class="full-width">
+        Dirección de entrega (cuando corresponda):
+        <input type="text" class="input" />
+      </label>
+
+      <div class="section-title">2. Información del producto</div>
+      <div class="row">
+        <label>
+          Artículo:
+          <input type="text" class="input" />
+        </label>
+        <label>
+          Número de operación:
+          <input type="text" class="input" />
+        </label>
+      </div>
+
+      <p class="important">
+        Importante<br />
+        Siempre corroborar los datos suministrados<br />
+        y firma de quien recibe, con el documento de identidad original.
+      </p>
+
+      <div class="row">
+        <label class="full-width">
+          Seudónimo comprador:
+          <input type="text" class="input" />
+        </label>
+      </div>
+      <div class="row">
+        <label class="full-width">
+          Seudónimo vendedor:
+          <input type="text" class="input" />
+        </label>
+      </div>
+
+      <div class="sign-section">
+        <div>
+          Lugar y fecha:
+          <input
+            type="text"
+            class="input"
+            style="width: 80%; margin-top: 5px"
+          />
+        </div>
+        <div>
+          Firma de quien recibe
+          <hr style="width: 80%; border: 1px solid #000" />
+        </div>
+      </div>
+
+      <p class="note">
+        Atención<br />
+        En caso de desconocimiento del pago por parte del titular de la tarjeta,
+        MercadoPago presentará este documento, pudiendo inclusive utilizarlo en
+        eventuales medidas que se hagan necesarias para el ejercicio de sus
+        derechos.
+      </p>
+    </div>
+  </body>
+</html>
