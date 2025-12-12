@@ -131,7 +131,7 @@
             class="bank-logo-container flex items-center justify-center p-4 sm:p-6 bg-white rounded-lg sm:rounded-xl shadow-md hover:shadow-lg transition-all duration-300 w-full h-24 sm:h-28 md:h-32"
           >
             <img
-              :src="getBankLogo(bank.domain)"
+              :src="bank.image"
               :alt="bank.name"
               class="max-w-full max-h-full object-contain filter grayscale hover:grayscale-0 transition-all duration-300 opacity-70 hover:opacity-100"
               loading="lazy"
@@ -166,114 +166,40 @@ useHead({
 
 const slide = ref(0)
 
-const slides = [
-  {
-    title: "Potencia en cada kilómetro",
-    image: "/assets/landing1.webp"
-  },
-  {
-    title: "Finva Motors",
-    image: "/assets/her21.webp"
-  },
-]
+// Initialize reactive data
+const slides = ref([])
+const motorcycles = ref([])
+const banks = ref([])
+const loading = ref(true)
+const error = ref(null)
 
-const motorcycles = [
-  {
-    id: 1,
-    image: "/assets/gallery1.jpeg",
-    name: "Yamaha MT-07",
-    price: "$8,500,000",
-    colors: ["Negro", "Azul", "Rojo"],
-    technical: {
-      engine: "689cc",
-      power: "73.4 HP",
-      torque: "67 Nm",
-      weight: "184 kg",
-      fuelCapacity: "14 L"
-    }
-  },
-  {
-    id: 2,
-    image: "/assets/gallery2.jpg",
-    name: "Honda CBR 650R",
-    price: "$12,800,000",
-    colors: ["Rojo", "Negro", "Blanco"],
-    technical: {
-      engine: "649cc",
-      power: "95 HP",
-      torque: "64 Nm",
-      weight: "201 kg",
-      fuelCapacity: "15.4 L"
-    }
-  },
-  {
-    id: 3,
-    image: "/assets/gallery3.jpg",
-    name: "Kawasaki Ninja 650",
-    price: "$9,200,000",
-    colors: ["Verde", "Negro", "Blanco"],
-    technical: {
-      engine: "649cc",
-      power: "68 HP",
-      torque: "64 Nm",
-      weight: "193 kg",
-      fuelCapacity: "15 L"
-    }
-  },
-  {
-    id: 4,
-    image: "/assets/gallery4.jpg",
-    name: "Ducati Monster 821",
-    price: "$15,500,000",
-    colors: ["Rojo", "Negro", "Amarillo"],
-    technical: {
-      engine: "821cc",
-      power: "109 HP",
-      torque: "86 Nm",
-      weight: "206 kg",
-      fuelCapacity: "17.5 L"
-    }
-  },
-  {
-    id: 5,
-    image: "/assets/gallery5.jpg",
-    name: "Triumph Street Triple 765",
-    price: "$18,900,000",
-    colors: ["Blanco", "Negro", "Naranja"],
-    technical: {
-      engine: "765cc",
-      power: "118 HP",
-      torque: "77 Nm",
-      weight: "166 kg",
-      fuelCapacity: "17.4 L"
-    }
-  },
-  {
-    id: 6,
-    image: "/assets/gallery6.jpg",
-    name: "Suzuki GSX-S750",
-    price: "$10,300,000",
-    colors: ["Azul", "Negro", "Gris"],
-    technical: {
-      engine: "749cc",
-      power: "112 HP",
-      torque: "80 Nm",
-      weight: "211 kg",
-      fuelCapacity: "19 L"
-    }
+// Get runtime config for API base URL
+const config = useRuntimeConfig()
+const apiBase = config.public.FLASK_BACKEND_URL || 'http://localhost:5000'
+
+// Fetch CMS content with dynamic data from database
+const { data: cmsData, error: cmsError } = await useFetch(`${apiBase}/cms/marketplace/content`, {
+  params: {
+    brand_name: 'Yamaha',
+    motorcycle_limit: 6
   }
-]
+})
 
-// Bank logos mapping
-const banks = [
-  { id: 1, name: "BBVA", domain: "bbva.com" },
-  { id: 2, name: "Santander", domain: "santander.com" },
-]
-
-// Get bank logo from Clearbit service
-const getBankLogo = (bankDomain) => {
-  return `https://logo.clearbit.com/${bankDomain}`
+if (cmsError.value) {
+  error.value = cmsError.value
+  console.error('Error fetching CMS content:', cmsError.value)
+  // Fallback to empty arrays
+  slides.value = []
+  motorcycles.value = []
+  banks.value = []
+} else if (cmsData.value) {
+  // Populate data from CMS
+  slides.value = cmsData.value.content.slides || []
+  motorcycles.value = cmsData.value.content.motorcycles || []
+  banks.value = cmsData.value.content.banks || []
 }
+
+loading.value = false
 
 // Handle image loading errors
 const handleImageError = (event) => {
