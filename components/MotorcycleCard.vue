@@ -2,6 +2,7 @@
   <div
     class="motorcycle-card bg-white rounded-xl sm:rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden cursor-pointer group"
     :class="{ 'expanded': isExpanded }"
+    @click="navigateToDetail"
   >
     <!-- Motorcycle Image -->
     <div class="relative h-48 sm:h-56 md:h-64 overflow-hidden">
@@ -82,16 +83,16 @@
             color="primary"
             size="md"
             class="full-width primary-btn"
-            @click.stop="toggleDetails"
+            @click.stop="isExpanded ? toggleDetails() : navigateToDetail()"
           >
-            {{ isExpanded ? 'Ocultar Detalles' : 'Ver Detalles' }}
+            {{ isExpanded ? 'Ocultar Detalles' : 'Ver Detalles Completos' }}
           </q-btn>
           <template #fallback>
             <button
               class="w-full px-4 py-2 bg-finva-primary text-white rounded-full font-medium hover:bg-finva-primary-dark transition-colors"
-              @click.stop="toggleDetails"
+              @click.stop="isExpanded ? toggleDetails() : navigateToDetail()"
             >
-              {{ isExpanded ? 'Ocultar Detalles' : 'Ver Detalles' }}
+              {{ isExpanded ? 'Ocultar Detalles' : 'Ver Detalles Completos' }}
             </button>
           </template>
         </ClientOnly>
@@ -114,6 +115,16 @@ const isExpanded = ref(false)
 
 const toggleDetails = () => {
   isExpanded.value = !isExpanded.value
+}
+
+const navigateToDetail = () => {
+  // Navigate to the motorcycle detail page
+  // Use ID if available, otherwise use a slug or name-based identifier
+  const motorcycleId = props.motorcycle.id || props.motorcycle.name?.toLowerCase().replace(/\s+/g, '-')
+  
+  if (motorcycleId) {
+    navigateTo(`/motorcycle/${motorcycleId}`)
+  }
 }
 </script>
 

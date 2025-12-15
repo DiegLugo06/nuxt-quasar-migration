@@ -63,7 +63,8 @@ export default defineNuxtConfig({
     // Public variables (Exposed to the client)
     public: {
       FLASK_BACKEND_URL: process.env.NUXT_PUBLIC_FLASK_BACKEND_URL || process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:5000',
-      FLASK_BACKEND_KEY: process.env.NUXT_PUBLIC_FLASK_BACKEND_KEY || process.env.NUXT_PUBLIC_API_KEY || ''
+      FLASK_BACKEND_KEY: process.env.NUXT_PUBLIC_FLASK_BACKEND_KEY || process.env.NUXT_PUBLIC_API_KEY || '',
+      SUPABASE_PROJECT_ID: process.env.NUXT_PUBLIC_SUPABASE_PROJECT_ID || ''
     }
   },
 

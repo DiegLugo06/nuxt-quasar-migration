@@ -441,6 +441,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useMotorcycleStore } from '@/stores/motorcycleStore'
 import { useQuasar } from 'quasar'
 import BankQuotes from '@/components/BankQuotes.vue'
+import { useRuntimeConfig } from 'nuxt/app'
 
 // Add Inter font from Google Fonts
 useHead({
@@ -636,41 +637,48 @@ const brandLogoMap: Record<string, string> = {
   'Triumph': 'Triumph-logo.png',
 }
 
-function getBrandLogoUrl(brandName: string): string | undefined {
-  if (!brandName) return undefined
-  
-  const exactMatch = brandLogoMap[brandName]
-  if (exactMatch) {
-    return `/assets/${exactMatch}`
-  }
-  
-  const brandKey = Object.keys(brandLogoMap).find(
-    key => key.toLowerCase() === brandName.toLowerCase()
-  )
-  if (brandKey) {
-    return `/assets/${brandLogoMap[brandKey]}`
-  }
-  
-  const normalizedName = brandName
-    .trim()
-    .split(/\s+/)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ')
-  
-  return `/assets/${normalizedName}-logo.png`
-}
 
 async function loadBrands() {
   loadingBrands.value = true
   try {
     await motorcycleStore.fetchMotorcycles()
     const uniqueBrands = new Map<string | number, Brand>()
+
+    const config = useRuntimeConfig()
+
+    console.log('Config:', config.public)
+    console.log('SUPABASE_PROJECT_ID:', config.public.SUPABASE_PROJECT_ID)
+
     motorcycleStore.motorcycles.forEach((moto: any) => {
       if (moto.brand && !uniqueBrands.has(moto.brand)) {
+        // normalize brand name for filename 
+        const normalizeBrandName = (name: string): string => {
+          if (!name) return 'unknown'
+          return name
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9\-\._]/g, '')
+          .replace(/-+/g, '-')
+          .trim()
+        }
+        const normalizedBrandName = normalizeBrandName(moto.brand)
+
+        // Construct supabase URL 
+        const supabaseProjectId = config.public.SUPABASE_PROJECT_ID
+        let imageUrl : string | undefined = undefined
+
+        if (supabaseProjectId) {
+          imageUrl = `https://${supabaseProjectId}.supabase.co/storage/v1/object/public/marketplace-assets/brands/${normalizedBrandName}.png`
+          
+          console.log (`Brand: ${moto.brand} - Image URL: ${imageUrl}`)
+        } else {
+          console.log (`Brand: ${moto.brand} - No image URL found`)
+        }
+
         uniqueBrands.set(moto.brand, {
           id: moto.brand,
           name: moto.brand,
-          imageUrl: getBrandLogoUrl(moto.brand)
+          imageUrl: imageUrl
         })
       }
     })
