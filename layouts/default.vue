@@ -325,33 +325,42 @@ flex-shrink: 0;
 }
 
 .navbar-finva.navbar-floating {
-position: fixed;
-top: 8px;
-left: 50%;
-transform: translateX(-50%);
-width: calc(100% - 16px);
-max-width: 1400px;
-border-radius: 12px;
-box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-z-index: 1000;
-backdrop-filter: blur(5px);
--webkit-backdrop-filter: blur(5px);
-background-color: rgba(36, 36, 36, 0.98) !important;
-will-change: transform;
+  position: fixed !important;
+  top: 8px !important;
+  left: 8px !important; /* Changed from 50% */
+  right: 8px !important; /* Added to constrain both sides */
+  transform: none !important; /* Removed translateX */
+  width: calc(100vw - 16px) !important; /* Use vw instead of % */
+  max-width: calc(100% - 16px) !important; /* Added max-width */
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  background-color: rgba(36, 36, 36, 0.98) !important;
+  will-change: transform;
+  box-sizing: border-box !important;
+  margin: 0 !important;
 }
 
 @media (max-width: 640px) {
-.navbar-finva.navbar-floating {
-width: calc(100% - 8px);
-top: 4px;
-}
+  .navbar-finva.navbar-floating {
+    left: 4px !important;
+    right: 4px !important;
+    width: calc(100vw - 8px) !important;
+    max-width: calc(100% - 8px) !important;
+    top: 4px;
+  }
 }
 
 @media (min-width: 768px) {
-.navbar-finva.navbar-floating {
-top: 16px;
-width: calc(100% - 32px);
-}
+  .navbar-finva.navbar-floating {
+    left: 16px !important;
+    right: 16px !important;
+    width: calc(100vw - 32px) !important;
+    max-width: calc(100% - 32px) !important;
+    top: 16px;
+  }
 }
 
 .navbar-finva .navbar-brand,
