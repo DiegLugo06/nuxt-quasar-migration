@@ -13,8 +13,8 @@
     </div>
 
     <div v-else-if="motorcycle" class="motorcycle-detail-content">
-      <section class="hero-section">
-        <div class="relative w-full h-full min-h-[45vh] md:min-h-[55vh] lg:min-h-[65vh]">
+      <section class="hero-section relative w-full overflow-hidden border-b-4 border-finva-primary">
+        <div class="relative w-full h-full">
           <img
             :src="heroImage || motorcycle.image"
             :alt="motorcycle.name"
@@ -515,15 +515,18 @@ onMounted(() => {
     overflow-x: hidden;
   }
   
-  /* Hero Section - SIMPLIFIED */
+  /* Hero Section */
   .hero-section {
     width: 100%;
+    height: 65vh;
+    min-height: 300px;
     position: relative;
     overflow: hidden;
   }
   
   .hero-section > .relative {
     width: 100%;
+    height: 100%;
     position: relative;
   }
   
@@ -580,8 +583,9 @@ onMounted(() => {
   
   /* Small mobile (up to 375px) */
   @media (max-width: 375px) {
-    .hero-section .relative {
-      min-height: 40vh;
+    .hero-section {
+      height: 50vh !important;
+      min-height: 300px;
     }
     
     .hero-section h1 {
@@ -600,8 +604,9 @@ onMounted(() => {
   
   /* Mobile (376px - 640px) */
   @media (min-width: 376px) and (max-width: 640px) {
-    .hero-section .relative {
-      min-height: 45vh;
+    .hero-section {
+      height: 50vh !important;
+      min-height: 350px;
     }
     
     .hero-section h1 {
@@ -615,8 +620,9 @@ onMounted(() => {
   
   /* Tablet (641px - 768px) */
   @media (min-width: 641px) and (max-width: 768px) {
-    .hero-section .relative {
-      min-height: 50vh;
+    .hero-section {
+      height: 45vh !important;
+      min-height: 400px;
     }
     
     .hero-section h1 {
@@ -635,8 +641,9 @@ onMounted(() => {
   
   /* Tablet (769px - 1024px) */
   @media (min-width: 769px) and (max-width: 1024px) {
-    .hero-section .relative {
-      min-height: 55vh;
+    .hero-section {
+      height: 55vh !important;
+      min-height: 450px;
     }
     
     .hero-section h1 {
@@ -655,8 +662,9 @@ onMounted(() => {
   
   /* Desktop (1025px and up) */
   @media (min-width: 1025px) {
-    .hero-section .relative {
-      min-height: 65vh;
+    .hero-section {
+      height: 65vh !important;
+      min-height: 500px;
     }
     
     .hero-section h1 {
