@@ -831,9 +831,97 @@ function handleImageLoad(event: Event) {
   }
 }
 
+// Handle URL parameters for redirect from motorcycle detail page
+const route = useRoute()
+
+async function handleRedirectParams() {
+  const motorcycleId = route.query.motorcycle_id as string
+  const brand = route.query.brand as string
+  const model = route.query.model as string
+  const year = route.query.year as string
+  const priceParam = route.query.price as string
+  const stepParam = route.query.step as string
+
+  // If we have motorcycle parameters, skip to step 2
+  if (motorcycleId && brand && model) {
+    // Ensure motorcycles are loaded
+    if (motorcycleStore.motorcycles.length === 0) {
+      await motorcycleStore.fetchMotorcycles()
+    }
+    
+    // Set the brand
+    const brandObj = brands.value.find(b => b.name === brand) || {
+      id: brand,
+      name: brand,
+      imageUrl: undefined
+    }
+    
+    if (!brands.value.find(b => b.name === brand)) {
+      brands.value.push(brandObj)
+    }
+    
+    selectedBrand.value = brandObj
+    
+    // Set the model
+    const modelName = decodeURIComponent(model)
+    const motorcycle = motorcycleStore.motorcycles.find((m: any) => 
+      m.id === parseInt(motorcycleId) || 
+      (m.brand === brand && (m.model === modelName || m.name?.includes(modelName)))
+    ) as any
+    
+    if (motorcycle) {
+      selectedModelId.value = motorcycle.id
+      models.value = [{
+        id: motorcycle.id,
+        name: modelName,
+        image: motorcycle.image
+      }]
+      
+      // Set price from query param or motorcycle data
+      if (priceParam) {
+        const price = parseFloat(priceParam.replace(/[^0-9.]/g, '')) || null
+        quoteParams.value.price = price
+        if (price) {
+          quoteParams.value.downPayment = Math.round(price * 0.2)
+        }
+      } else if (motorcycle.price) {
+        const price = parseFloat(String(motorcycle.price)) || null
+        quoteParams.value.price = price
+        if (price) {
+          quoteParams.value.downPayment = Math.round(price * 0.2)
+        }
+      }
+    } else {
+      // If motorcycle not found in store, use query params
+      selectedModelId.value = parseInt(motorcycleId)
+      models.value = [{
+        id: parseInt(motorcycleId),
+        name: modelName,
+        image: undefined
+      }]
+      
+      // Set price from query param
+      if (priceParam) {
+        const price = parseFloat(priceParam.replace(/[^0-9.]/g, '')) || null
+        quoteParams.value.price = price
+        if (price) {
+          quoteParams.value.downPayment = Math.round(price * 0.2)
+        }
+      }
+    }
+    
+    // Skip to step 2 if step parameter is 'financing' or if we have all required params
+    if (stepParam === 'financing' || (motorcycleId && brand && model)) {
+      step.value = 1 // Step 2 (index 1)
+    }
+  }
+}
+
 // Lifecycle
-onMounted(() => {
-  loadBrands()
+onMounted(async () => {
+  await loadBrands()
+  // Handle redirect params after brands are loaded
+  handleRedirectParams()
 })
 </script>
 
@@ -849,6 +937,8 @@ onMounted(() => {
   background: linear-gradient(135deg, #f5f7fa 0%, #e8f5e9 100%);
   padding: 1rem;
   padding-bottom: 2rem;
+  padding-top: calc(1rem + 80px + 94px); /* Account for navbar (80px) + preview component (94px) */
+  position: relative;
 }
 
 /* Header */
@@ -950,6 +1040,10 @@ onMounted(() => {
   border-radius: 1.5rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   overflow: hidden;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 100%;
 }
 
 /* Step Content */
@@ -1289,7 +1383,10 @@ onMounted(() => {
   gap: 0.75rem;
   margin-top: 2rem;
   padding-top: 1.5rem;
+  padding-bottom: 1rem;
   border-top: 1px solid #e5e7eb;
+  position: relative;
+  z-index: 1;
 }
 
 .nav-button {
@@ -1427,6 +1524,7 @@ onMounted(() => {
 @media (min-width: 768px) {
   .quote-generator-container {
     padding: 2rem;
+    padding-top: calc(2rem + 80px + 94px); /* Account for navbar (80px) + preview (94px) */
     max-width: 48rem;
     margin: 0 auto;
   }
@@ -1452,6 +1550,7 @@ onMounted(() => {
 @media (min-width: 1024px) {
   .quote-generator-container {
     max-width: 64rem;
+    padding-top: calc(2rem + 80px + 94px); /* Account for navbar (80px) + preview (94px) */
   }
 }
 

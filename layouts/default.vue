@@ -146,6 +146,9 @@
       </div>
     </header>
 
+    <!-- Motorcycle Preview Component -->
+    <MotorcyclePreview />
+
     <!-- PAGE CONTENT -->
     <main>
       <slot />
