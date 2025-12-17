@@ -48,11 +48,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useSolicitudStore } from '@/stores/solicitudStore'
 
 const route = useRoute()
 const router = useRouter()
 const config = useRuntimeConfig()
+const solicitudStore = useSolicitudStore()
 
 // Calculate top position based on navbar
 const topPosition = ref(80) // Default navbar height
@@ -143,44 +145,95 @@ function getMotorcycleImageUrl(modelName: string): string {
   return `https://${supabaseProjectId}.supabase.co/storage/v1/object/public/${imageBucket}/assets/${normalizedModel}/${imageFilename}`
 }
 
-// Get selected motorcycle from query params
-const selectedMotorcycle = computed(() => {
-  const motorcycleId = route.query.motorcycle_id as string
-  const brand = route.query.brand as string
-  const model = route.query.model as string
-  const year = route.query.year as string
-  const price = route.query.price as string
+// Pages where MotorcyclePreview should be shown
+const allowedPages = ['/quote-generator', '/confirm-store', '/client-validation']
 
-  // Only show preview on quote-generator page
-  if (route.path !== '/quote-generator') {
+// Get selected motorcycle from query params or solicitudStore
+const selectedMotorcycle = computed(() => {
+  // Only show preview on allowed pages
+  if (!allowedPages.includes(route.path)) {
     return null
   }
 
+  let motorcycleId: string | null = null
+  let brand: string | null = null
+  let model: string | null = null
+  let year: string | null = null
+  let price: string | number | null = null
+
+  // Try to get from query params first (for quote-generator)
+  if (route.query.motorcycle_id) {
+    motorcycleId = route.query.motorcycle_id as string
+    brand = route.query.brand as string
+    model = route.query.model as string
+    year = route.query.year as string
+    price = route.query.price as string
+  } 
+  // If not in query params, get from solicitudStore (for confirm-store and client-validation)
+  else if (solicitudStore.solicitud.motorcycle_id) {
+    motorcycleId = solicitudStore.solicitud.motorcycle_id.toString()
+    brand = solicitudStore.solicitud.brand_motorcycle
+    model = solicitudStore.solicitud.model_motorcycle
+    year = solicitudStore.solicitud.year_motorcycle?.toString() || null
+    price = solicitudStore.solicitud.price
+  }
+
+  // If we have the required data, build the motorcycle object
   if (motorcycleId && brand && model) {
-    // Decode model name
-    const decodedModel = decodeURIComponent(model)
+    // Decode model name if it came from query params (URL encoded)
+    // If it came from store, it's already decoded
+    let decodedModel = model
+    if (route.query.model) {
+      try {
+        decodedModel = decodeURIComponent(model)
+      } catch (e) {
+        // If decoding fails, use original model
+        decodedModel = model
+      }
+    }
     
     // Format price
     let formattedPrice = 'N/A'
+    let priceNumeric: number | null = null
+    
     if (price) {
-      const numericPrice = parseFloat(price.replace(/[^0-9.]/g, ''))
-      if (!isNaN(numericPrice)) {
-        formattedPrice = `$${numericPrice.toLocaleString('es-MX', { maximumFractionDigits: 0 })}`
+      if (typeof price === 'number') {
+        priceNumeric = price
+        formattedPrice = `$${price.toLocaleString('es-MX', { maximumFractionDigits: 0 })}`
+      } else {
+        priceNumeric = parseFloat(price.replace(/[^0-9.]/g, ''))
+        if (!isNaN(priceNumeric)) {
+          formattedPrice = `$${priceNumeric.toLocaleString('es-MX', { maximumFractionDigits: 0 })}`
+        }
       }
     }
 
     // Get image URL from model name
     const imageUrl = getMotorcycleImageUrl(decodedModel)
 
-    return {
+    const motorcycleData = {
       id: motorcycleId,
       brand: brand,
       model: decodedModel,
       name: `${brand} ${decodedModel}`,
       year: year || new Date().getFullYear().toString(),
       price: formattedPrice,
+      priceNumeric: priceNumeric,
       image: imageUrl
     }
+
+    // Save to solicitudStore when motorcycle is selected (only if from query params)
+    if (route.query.motorcycle_id && motorcycleData.id && motorcycleData.brand && motorcycleData.model) {
+      solicitudStore.setMotorcycleData({
+        id: parseInt(motorcycleData.id),
+        brand: motorcycleData.brand,
+        model: motorcycleData.model,
+        year: motorcycleData.year,
+        price: motorcycleData.priceNumeric
+      })
+    }
+
+    return motorcycleData
   }
   return null
 })
@@ -193,26 +246,42 @@ const handleImageError = (event: Event) => {
 }
 
 const viewDetails = () => {
-  const motorcycleId = route.query.motorcycle_id as string
+  // Get motorcycle ID from query params or store
+  let motorcycleId: string | null = null
+  if (route.query.motorcycle_id) {
+    motorcycleId = route.query.motorcycle_id as string
+  } else if (solicitudStore.solicitud.motorcycle_id) {
+    motorcycleId = solicitudStore.solicitud.motorcycle_id.toString()
+  }
+  
   if (motorcycleId) {
     router.push(`/motorcycle/${motorcycleId}`)
   }
 }
 
 const clearSelection = () => {
-  // Remove motorcycle query params
-  const newQuery = { ...route.query }
-  delete newQuery.motorcycle_id
-  delete newQuery.brand
-  delete newQuery.model
-  delete newQuery.year
-  delete newQuery.price
-  delete newQuery.image
+  // Remove motorcycle query params if they exist
+  if (route.query.motorcycle_id) {
+    const newQuery = { ...route.query }
+    delete newQuery.motorcycle_id
+    delete newQuery.brand
+    delete newQuery.model
+    delete newQuery.year
+    delete newQuery.price
+    delete newQuery.image
+    
+    router.replace({ 
+      path: route.path, 
+      query: newQuery 
+    })
+  }
   
-  router.replace({ 
-    path: route.path, 
-    query: newQuery 
-  })
+  // Clear motorcycle data from store
+  solicitudStore.solicitud.motorcycle_id = null
+  solicitudStore.solicitud.brand_motorcycle = ""
+  solicitudStore.solicitud.model_motorcycle = ""
+  solicitudStore.solicitud.year_motorcycle = null
+  solicitudStore.solicitud.price = null
 }
 </script>
 

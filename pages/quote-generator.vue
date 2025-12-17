@@ -276,6 +276,17 @@
           >
             Ver ofertas
           </q-btn>
+
+          <q-btn
+            v-if="step === 2 && !loading && quotes.length > 0"
+            color="primary"
+            size="lg"
+            class="nav-button continue-button"
+            @click="continueToStoreSelection"
+          >
+            Continuar con el proceso
+            <q-icon name="arrow_forward" class="q-ml-sm" />
+          </q-btn>
         </div>
       </q-card-section>
     </q-card>
@@ -442,6 +453,7 @@ import { useMotorcycleStore } from '@/stores/motorcycleStore'
 import { useQuasar } from 'quasar'
 import BankQuotes from '@/components/BankQuotes.vue'
 import { useRuntimeConfig } from 'nuxt/app'
+import { useRouter } from 'vue-router'
 
 // Add Inter font from Google Fonts
 useHead({
@@ -511,6 +523,7 @@ interface QuoteParams {
 
 // Stores
 const motorcycleStore = useMotorcycleStore()
+const solicitudStore = useSolicitudStore()
 
 // State
 const step = ref(0)
@@ -792,6 +805,14 @@ function onOfferSelected(quote: any) {
   showDetails.value = true
 }
 
+function continueToStoreSelection() {
+  // Save quote params to solicitud store
+  solicitudStore.setQuoteParams(quoteParams.value)
+  
+  // Navigate to store selection page
+  router.push('/confirm-store')
+}
+
 function getBankLogoUrl(bankLogoDomain: string) {
   if (!bankLogoDomain) return ''
   return `https://logo.clearbit.com/${bankLogoDomain}`
@@ -833,6 +854,7 @@ function handleImageLoad(event: Event) {
 
 // Handle URL parameters for redirect from motorcycle detail page
 const route = useRoute()
+const router = useRouter()
 
 async function handleRedirectParams() {
   const motorcycleId = route.query.motorcycle_id as string

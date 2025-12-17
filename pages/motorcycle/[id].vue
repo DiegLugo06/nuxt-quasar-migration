@@ -30,18 +30,6 @@
               <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-4 sm:mb-6 font-inter leading-tight tracking-wider drop-shadow-lg">
                 {{ motorcycleModelName }}
               </h1>
-              <q-btn
-                label="Cotizar Ahora"
-                rounded
-                color="finva-primary"
-                text-color="eerie-black"
-                size="lg"
-                icon="arrow_forward"
-                icon-right
-                @click="navigateToQuote"
-                class="cta-hero-btn"
-                unelevated
-              />
             </div>
           </div>
 

@@ -153,7 +153,7 @@ export const useClientStore = defineStore("clientStore", {
 
       try {
         const response = await $axios.post(
-          "/add_client_without_report",
+          "/api/loan/add_client_without_report",
           client_data
         );
 
@@ -193,7 +193,7 @@ export const useClientStore = defineStore("clientStore", {
      */
     async validatePhoneAndEmail() {
       const { $axios } = useNuxtApp();
-      const response = await $axios.get("/client/validate_phone", {
+      const response = await $axios.get("/api/client/validate_phone", {
         params: {
           email: this.client.email,
           phone: this.client.phone,
@@ -208,7 +208,7 @@ export const useClientStore = defineStore("clientStore", {
      */
     async getClient() {
       const { $axios } = useNuxtApp();
-      const response = await $axios.get("/client/validate_client", {
+      const response = await $axios.get("/api/client/validate_client", {
         params: {
           email: this.client.email,
           phone: this.client.phone,
