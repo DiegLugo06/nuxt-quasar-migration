@@ -8,6 +8,13 @@ export default defineNuxtPlugin((nuxtApp) => {
     const originalLog = console.log
 
     const shouldSuppress = (message: string): boolean => {
+      // Don't suppress our debug logs
+      if (message.includes('[confirm-data]') || 
+          message.includes('[ReusableForm]') || 
+          message.includes('[Quasar Plugin]')) {
+        return false
+      }
+      
       return (
         message.includes('Hydration') ||
         message.includes('hydration') ||
@@ -18,7 +25,10 @@ export default defineNuxtPlugin((nuxtApp) => {
         message.includes('Failed setting prop "size"') ||
         message.includes('injection "_q_" not found') ||
         message.includes('IndexSizeError') ||
-        message.includes('invalid size')
+        message.includes('invalid size') ||
+        message.includes('to resolve component: q-radio') ||
+        message.includes('isCustomElement') ||
+        message.includes('component resolution')
       )
     }
 
@@ -51,6 +61,17 @@ export default defineNuxtPlugin((nuxtApp) => {
     nuxtApp.vueApp.config.errorHandler = (err, instance, info) => {
       if (err && typeof err === 'object') {
         const errMessage = err.message || err.toString() || ''
+        
+        // Always log _withMods errors for debugging
+        if (errMessage.includes('_withMods')) {
+          console.error('🚨 [_withMods ERROR] Caught in error handler:', err)
+          console.error('🚨 [_withMods ERROR] Error message:', errMessage)
+          console.error('🚨 [_withMods ERROR] Error info:', info)
+          console.error('🚨 [_withMods ERROR] Instance:', instance)
+          console.error('🚨 [_withMods ERROR] Stack:', err.stack)
+          // Don't suppress this error
+        }
+        
         if (shouldSuppress(errMessage) || shouldSuppress(info || '')) {
           return
         }

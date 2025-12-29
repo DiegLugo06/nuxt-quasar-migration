@@ -39,7 +39,7 @@ export const useMotorcycleStore = defineStore("motorcycleStore", {
       model: "", // Selected motorcycle model
       year: null, // Selected year of manufacture
       price: "", // Price of the selected motorcycle
-      downPayment: "20", // Down payment percentage (default: 20%)
+      downPayment: "0.2", // Down payment percentage (default: 20%)
     },
     motorcycleId: null,
     motorycleHashCode: null,

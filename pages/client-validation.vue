@@ -1,14 +1,20 @@
 <template>
   <ClientOnly>
+    <ProcessStepper v-if="showStepper" />
     <div class="client-validation-container">
-      <div class="validation-header">
-        <h1 class="page-title">Validación de Cliente</h1>
-        <p class="page-subtitle">Ingresa tus datos para continuar con el proceso</p>
-      </div>
+      <div class="main-card">
+        <div class="step-content">
+          <div class="info-card">
+            <div class="info-header">
+              <div class="brand-icon-box">
+                <q-icon name="verified_user" size="24px" />
+              </div>
+              <h3 class="info-title">Validación de Cliente</h3>
+            </div>
 
-      <q-card class="validation-card">
-        <q-card-section>
-          <q-form @submit.prevent="handleFormSubmit" class="validation-form">
+            <q-card class="validation-card" flat>
+              <q-card-section>
+                <q-form @submit.prevent="handleFormSubmit" class="validation-form">
             <!-- Phone Input -->
             <q-input
               v-if="!invalidTypeData"
@@ -134,24 +140,28 @@
                 class="form-button"
               />
             </div>
-          </q-form>
+                </q-form>
 
-          <!-- Privacy Notice -->
-          <div class="privacy-notice">
-            Al dar click en validar, estás aceptando nuestro
-            <a
-              href="https://ferbel.retool.com/embedded/public/b22a6d31-f47f-4a7c-a01e-7e8bfad9ce82"
-              target="_blank"
-              class="privacy-link"
-            >
-              aviso de privacidad
-            </a>.
+                <!-- Privacy Notice -->
+                <div class="privacy-notice">
+                  Al dar click en validar, estás aceptando nuestro
+                  <a
+                    href="https://ferbel.retool.com/embedded/public/b22a6d31-f47f-4a7c-a01e-7e8bfad9ce82"
+                    target="_blank"
+                    class="privacy-link"
+                  >
+                    aviso de privacidad
+                  </a>.
+                </div>
+              </q-card-section>
+            </q-card>
           </div>
-        </q-card-section>
-      </q-card>
+        </div>
+      </div>
+    </div>
 
-      <!-- Registration Options Dialog -->
-      <q-dialog v-model="showRegistrationDialog" persistent>
+    <!-- Registration Options Dialog -->
+    <q-dialog v-model="showRegistrationDialog" persistent>
         <q-card class="registration-dialog-card">
           <q-card-section class="text-center">
             <div class="dialog-title">¿Cómo deseas registrarte?</div>
@@ -212,23 +222,28 @@
           </q-card-actions>
         </q-card>
       </q-dialog>
-    </div>
   </ClientOnly>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useClientStore } from '@/stores/clientStore'
 import { useSolicitudStore } from '@/stores/solicitudStore'
 import { useFlowProcessStore } from '@/stores/flowProcessStore'
+import ProcessStepper from '@/components/ProcessStepper.vue'
 
 const router = useRouter()
 const $q = useQuasar()
 const clientStore = useClientStore()
 const solicitudStore = useSolicitudStore()
 const flowStore = useFlowProcessStore()
+
+// Computed property to check if stepper should be shown
+const showStepper = computed(() => {
+  return flowStore.flowProcess === 'onCreditWeb'
+})
 
 // State
 const loading = ref(false)
@@ -369,41 +384,104 @@ function resetValidation() {
 function goBack() {
   router.push('/confirm-store')
 }
+
+// Auto-validate if phone and email are already filled
+const shouldAutoValidate = computed(() => {
+  const isEmailValid = /.+@.+\..+/.test(client.email)
+  const isPhoneValid = client.phone.length === 13
+  return isEmailValid && isPhoneValid && !clientRegistered.value && !loading.value
+})
+
+// Watch for auto-validation
+watch(shouldAutoValidate, (newVal) => {
+  if (newVal) {
+    // Small delay to ensure form is ready
+    setTimeout(() => {
+      if (shouldAutoValidate.value) {
+        validatePhoneClient()
+      }
+    }, 500)
+  }
+})
+
+// Also check on mount
+onMounted(() => {
+  if (shouldAutoValidate.value) {
+    setTimeout(() => {
+      if (shouldAutoValidate.value) {
+        validatePhoneClient()
+      }
+    }, 500)
+  }
+})
 </script>
 
 <style scoped>
 .client-validation-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8f5e9 100%);
-  padding: 2rem 1rem;
+  background: #fcfcfc;
+  padding: 120px 1rem 3rem; /* Adjust based on stepper height */
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
 }
 
-.validation-header {
-  text-align: center;
-  margin-bottom: 2rem;
+/* Main Card */
+.main-card {
+  width: 100%;
+  max-width: 500px;
+  background: white;
+  border-radius: 24px;
+  border: 1px solid rgba(36, 36, 36, 0.08);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04);
 }
 
-.page-title {
-  font-size: 2rem;
-  font-weight: 800;
-  color: #1a1a1a;
-  margin: 0 0 0.5rem 0;
+/* Brand Accent Line */
+.main-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, #242424 0%, #2FFF96 100%);
+  z-index: 1;
 }
 
-.page-subtitle {
-  font-size: 1rem;
-  color: #6b7280;
+/* Step Content */
+.step-content {
+  padding: 0;
+}
+
+/* Info Card */
+.info-card {
+  padding: 2rem 1.5rem;
+}
+
+.info-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.brand-icon-box {
+  color: #242424;
+}
+
+.info-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #242424;
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
 .validation-card {
-  max-width: 600px;
   width: 100%;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
+  background: transparent;
 }
 
 .validation-form {
@@ -414,6 +492,31 @@ function goBack() {
 
 .form-input {
   width: 100%;
+}
+
+:deep(.form-input .q-field__control) {
+  border-radius: 0.75rem;
+  border: 1.5px solid #e2e8f0;
+  background: #fcfcfc;
+  transition: all 0.2s ease;
+}
+
+:deep(.form-input .q-field--focused .q-field__control) {
+  background: #ffffff;
+  border-color: #242424;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+:deep(.form-input .q-field__native),
+:deep(.form-input .q-field__input) {
+  font-weight: 600;
+  color: #242424;
+}
+
+:deep(.form-input .q-field__label) {
+  color: #242424;
+  font-weight: 500;
+  opacity: 0.7;
 }
 
 .clue-section {
@@ -428,12 +531,13 @@ function goBack() {
 
 .clue-text {
   font-size: 0.875rem;
-  color: #374151;
+  color: #242424;
+  opacity: 0.8;
 }
 
 .clue-value {
   font-weight: 700;
-  color: #2FFF96;
+  color: #242424;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -441,27 +545,55 @@ function goBack() {
 
 .form-buttons {
   display: flex;
-  justify-content: center;
-  gap: 1rem;
-  margin-top: 1rem;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 0 1.5rem;
 }
 
 .form-button {
-  min-width: 120px;
-  height: 3rem;
-  font-weight: 600;
+  flex: 1;
+  height: 52px;
+  border-radius: 14px;
+  font-weight: 800;
+  text-transform: none;
+  transition: all 0.3s ease;
+}
+
+:deep(.form-button.q-btn--outline) {
+  border: 2px solid #242424 !important;
+  color: #242424 !important;
+  background: white !important;
+}
+
+:deep(.form-button.q-btn--outline:hover) {
+  background: #f8fafc !important;
+  border-color: #242424 !important;
+}
+
+:deep(.form-button:not(.q-btn--outline)) {
+  background: #2FFF96 !important;
+  color: #242424 !important;
+  box-shadow: 0 8px 15px rgba(47, 255, 150, 0.2) !important;
+}
+
+:deep(.form-button:not(.q-btn--outline):hover) {
+  box-shadow: 0 10px 20px rgba(47, 255, 150, 0.3) !important;
+  transform: translateY(-2px);
 }
 
 .privacy-notice {
   text-align: center;
-  color: #6b7280;
+  color: #242424;
   font-size: 0.875rem;
   margin-top: 2rem;
+  padding: 0 1.5rem;
+  opacity: 0.7;
 }
 
 .privacy-link {
-  color: #2FFF96;
+  color: #242424;
   text-decoration: underline;
+  font-weight: 600;
 }
 
 .registration-dialog-card {
@@ -473,13 +605,14 @@ function goBack() {
 .dialog-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: #242424;
   margin-bottom: 0.5rem;
 }
 
 .dialog-subtitle {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: #242424;
+  opacity: 0.7;
 }
 
 .registration-options {
@@ -526,7 +659,7 @@ function goBack() {
   gap: 0.5rem;
   font-weight: 600;
   font-size: 1rem;
-  color: #1f2937;
+  color: #242424;
 }
 
 .option-icon {
@@ -536,7 +669,8 @@ function goBack() {
 
 .option-subtitle {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: #242424;
+  opacity: 0.7;
   margin-left: 1.75rem;
 }
 
@@ -558,21 +692,23 @@ function goBack() {
   color: white;
 }
 
-@media (max-width: 640px) {
+@media (min-width: 768px) {
   .client-validation-container {
-    padding: 1rem;
+    padding: 2.5rem;
+    padding-top: calc(2.5rem + 120px);
+    max-width: 50rem;
+    margin: 0 auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  .client-validation-container {
+    max-width: 68rem;
+    padding-top: calc(2.5rem + 120px);
   }
 
-  .page-title {
-    font-size: 1.5rem;
-  }
-
-  .form-buttons {
-    flex-direction: column;
-  }
-
-  .form-button {
-    width: 100%;
+  .main-card {
+    border-radius: 2.5rem;
   }
 }
 </style>

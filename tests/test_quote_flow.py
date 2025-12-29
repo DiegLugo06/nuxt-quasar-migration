@@ -144,8 +144,10 @@ class TestQuoteFlow:
             
             self.driver.implicitly_wait(10)
             self.wait = WebDriverWait(self.driver, 20)
-            self.base_url = "http://localhost:3000"
-            print("[SETUP] Setup complete!")
+            # base_url will be set by comparison_runner, don't hardcode it here
+            if not hasattr(self, 'base_url'):
+                self.base_url = "http://localhost:3000"  # Fallback for direct test execution
+            print(f"[SETUP] Setup complete! Base URL: {self.base_url}")
             
             yield
             
@@ -180,7 +182,7 @@ class TestQuoteFlow:
         
         # Pre-check: Verify server is running
         print("\n[PRE-CHECK] Verifying server is accessible...")
-        base_url = "http://localhost:3000"
+        base_url = self.base_url  # Use the base_url set by comparison_runner
         try:
             response = requests.get(base_url, timeout=5)
             print(f"✓ Server is accessible (Status: {response.status_code})")

@@ -3,6 +3,8 @@
 // The client will render the real Quasar components
 import { defineComponent } from 'vue'
 
+// defineNuxtPlugin is auto-imported by Nuxt 3
+// @ts-ignore - Auto-imported by Nuxt, available at runtime
 export default defineNuxtPlugin((nuxtApp) => {
   // Provide a stub Quasar instance for SSR at the app level
   // This prevents "injection _q_ not found" errors during SSR
@@ -54,16 +56,48 @@ export default defineNuxtPlugin((nuxtApp) => {
   nuxtApp.vueApp.component('q-select', QSelectStub)
   nuxtApp.vueApp.component('QSelect', QSelectStub)
 
+  // Create radio stub
+  const QRadioStub = defineComponent({
+    name: 'QRadioStub',
+    inheritAttrs: false,
+    props: {} as any,
+    emits: ['update:modelValue'],
+    setup() {
+      return () => null as any
+    }
+  })
+
+  // Register radio stub
+  nuxtApp.vueApp.component('q-radio', QRadioStub)
+  nuxtApp.vueApp.component('QRadio', QRadioStub)
+
+  // Create checkbox stub
+  const QCheckboxStub = defineComponent({
+    name: 'QCheckboxStub',
+    inheritAttrs: false,
+    props: {} as any,
+    emits: ['update:modelValue'],
+    setup() {
+      return () => null as any
+    }
+  })
+
+  // Register checkbox stub
+  nuxtApp.vueApp.component('q-checkbox', QCheckboxStub)
+  nuxtApp.vueApp.component('QCheckbox', QCheckboxStub)
+
   // Register all other components as generic stubs
   const otherComponents = [
     'QBtn', 'q-btn',
     'QIcon', 'q-icon',
     'QCard', 'q-card',
     'QCardSection', 'q-card-section',
+    'QCardActions', 'q-card-actions',
     'QSpinner', 'q-spinner',
     'QDialog', 'q-dialog',
     'QForm', 'q-form',
     'QUploader', 'q-uploader',
+    'QFile', 'q-file',
     'QLinearProgress', 'q-linear-progress',
     'QBadge', 'q-badge',
     'QBanner', 'q-banner',

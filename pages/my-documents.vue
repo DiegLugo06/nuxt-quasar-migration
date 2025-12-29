@@ -545,14 +545,37 @@
         </div>
       </q-card-section>
     </q-card>
+
+    <!-- Action Buttons -->
+    <div v-if="!loading" class="action-buttons-container">
+      <q-btn
+        v-if="hasDocumentsPendingUpload"
+        color="primary"
+        class="action-btn submit-btn"
+        label="Subir Documentos"
+        @click="handleSubmit"
+        icon="cloud_upload"
+        :loading="isUploading"
+      />
+      <q-btn
+        v-if="areAllDocumentsUploaded && !hasDocumentsPendingUpload"
+        color="primary"
+        class="action-btn continue-btn"
+        label="Continuar"
+        @click="handleNavigateToNextStep"
+        icon="navigate_next"
+      />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useClientStore } from '@/stores/clientStore'
+import { useFlowProcessStore } from '@/stores/flowProcessStore'
+import { useSolicitudStore } from '@/stores/solicitudStore'
 import { useQuasar } from 'quasar'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 // Add Inter font
 useHead({
@@ -575,7 +598,21 @@ useHead({
 
 const $q = useQuasar()
 const clientStore = useClientStore()
+const flowProcessStore = useFlowProcessStore()
+const solicitudStore = useSolicitudStore()
 const router = useRouter()
+const route = useRoute()
+
+// Check if we're coming from the flow process
+const isFromFlow = computed(() => {
+  // Check if we're in a flow process
+  if (flowProcessStore.flowProcess) {
+    const routes = flowProcessStore.routes[flowProcessStore.flowProcess] || []
+    return routes.includes('my-documents')
+  }
+  // Check route query for flow indicator
+  return route.query.fromFlow === 'true' || route.query.from === 'complete-solicitud-data'
+})
 
 // Refs for file inputs (for direct access)
 const idDocumentFrontFileInput = ref<HTMLInputElement | null>(null)
@@ -613,6 +650,14 @@ const expandedUploads = ref<Record<string, boolean>>({})
 const selectedFiles = ref<Record<string, File>>({})
 const selectedIncomeProofFiles = ref<Record<number, File>>({})
 const uploading = ref<Record<string, boolean>>({})
+const isUploading = ref(false)
+
+// Document upload status tracking (similar to upload-documents.vue)
+const documentsUploaded = ref({
+  idDocumentFront: false,
+  idDocumentReverse: false,
+  addressProof: false,
+})
 
 // Available months
 const availableMonths = computed(() => {
@@ -823,6 +868,15 @@ function handleFileSelect(type: string, file: File) {
   }
   
   selectedFiles.value[type] = file
+  
+  // Update document status to "selected" (similar to upload-documents.vue)
+  if (type === 'idDocumentFront') {
+    documentsUploaded.value.idDocumentFront = 'selected'
+  } else if (type === 'idDocumentReverse') {
+    documentsUploaded.value.idDocumentReverse = 'selected'
+  } else if (type === 'addressProof') {
+    documentsUploaded.value.addressProof = 'selected'
+  }
 }
 
 function handleIncomeProofFileSelect(index: number, file: File) {
@@ -872,12 +926,13 @@ function handleIncomeProofFileSelect(index: number, file: File) {
       id: null,
       month: null,
       type: null,
-      status: null,
+      status: 'selected',
       sequence_number: null,
       file: file
     }
   } else {
     incomeProofs.value[index].file = file
+    incomeProofs.value[index].status = 'selected'
   }
 }
 
@@ -978,6 +1033,9 @@ async function uploadIncomeProof(index: number) {
     return
   }
 
+  // Update status to validating
+  incomeProofs.value[index].status = 'validating'
+
   const uploadKey = `incomeProof${index}`
   uploading.value[uploadKey] = true
 
@@ -991,16 +1049,21 @@ async function uploadIncomeProof(index: number) {
     const newFileName = `incomeProofClient.${fileExtension}`
     const renamedFile = new File([file], newFileName, { type: file.type })
 
+    const monthValue = typeof proof.month === 'number' ? proof.month : proof.month
+    const documentType = proof.type || 'Others'
+
+    // Use /client/upload endpoint (baseURL already includes /api)
+    formData.append('client_id', clientStore.client.id.toString())
     formData.append('file_type', 'incomeProof')
     formData.append('file', renamedFile)
-    formData.append('month', proof.month.toString())
-    formData.append('document_type', proof.type)
+    formData.append('month', monthValue.toString())
+    formData.append('document_type', documentType)
     if (proof.sequence_number) {
       formData.append('sequence_number', proof.sequence_number.toString())
     }
     formData.append('validated', 'false')
 
-    await axios.post(`/document/${clientStore.client.id}`, formData, {
+    await axios.post('/client/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       },
@@ -1008,6 +1071,9 @@ async function uploadIncomeProof(index: number) {
         type: 'incomeProof'
       }
     })
+
+    // Update status to completed
+    incomeProofs.value[index].status = true
 
     $q.notify({
       type: 'positive',
@@ -1018,6 +1084,9 @@ async function uploadIncomeProof(index: number) {
     expandedUploads.value[uploadKey] = false
     await loadDocuments()
   } catch (error: any) {
+    // Reset status on error
+    incomeProofs.value[index].status = 'selected'
+    
     $q.notify({
       type: 'negative',
       message: error.response?.data?.error || 'Error al subir el comprobante. Por favor, intenta de nuevo.'
@@ -1043,43 +1112,137 @@ function addIncomeProof() {
 async function loadDocuments() {
   loading.value = true
   try {
-    if (!clientStore.client.id) {
-      const clientData = await clientStore.getClient() as any
-      if (!clientData?.client_id) {
-        $q.notify({
-          type: 'warning',
-          message: 'No se encontró información del cliente. Por favor, inicia sesión.'
-        })
-        router.push('/login')
+    // If coming from flow process, skip validation prompt and use existing client data
+    if (isFromFlow.value) {
+      // Try to get client ID from solicitud if not in client store
+      if (!clientStore.client.id && solicitudStore.solicitud?.cliente_id) {
+        clientStore.client.id = solicitudStore.solicitud.cliente_id
+      }
+      
+      // If we have client ID, fetch files directly without validation
+      if (clientStore.client.id) {
+        const nuxtApp = useNuxtApp()
+        const axios = nuxtApp.$axios as any
+        try {
+          // Fetch file status directly using client ID (no validation required)
+          const filesResponse = await axios.get(`/client/file-status/${clientStore.client.id}`)
+          const filesData = filesResponse.data || {}
+          
+          // Map the file status fields to match the expected format
+          // Field names from backend: officialId_front, officialId_reverse, addressProof
+          const files = {
+            addressProof: filesData.addressProof || null,
+            officialId_front: filesData.officialId_front || null,
+            officialId_reverse: filesData.officialId_reverse || null,
+            income_proof_documents: filesData.income_proof_documents || []
+          }
+          
+          const { addressProof, officialId_front, officialId_reverse, income_proof_documents } = files
+          
+          const getValidationState = (status: string | null | undefined): string | null => {
+            if (!status) return null
+            return status === 'validated' ? 'validated' : status === 'validating' ? 'validating' : null
+          }
+
+          documentsStatus.value = {
+            idDocumentFront: getValidationState(officialId_front),
+            idDocumentReverse: getValidationState(officialId_reverse),
+            addressProof: getValidationState(addressProof)
+          }
+
+          // Update documentsUploaded status
+          documentsUploaded.value = {
+            idDocumentFront: getValidationState(officialId_front) === 'validated' ? true : 
+                            getValidationState(officialId_front) === 'validating' ? 'validating' : false,
+            idDocumentReverse: getValidationState(officialId_reverse) === 'validated' ? true : 
+                              getValidationState(officialId_reverse) === 'validating' ? 'validating' : false,
+            addressProof: getValidationState(addressProof) === 'validated' ? true : 
+                         getValidationState(addressProof) === 'validating' ? 'validating' : false,
+          }
+
+          if (income_proof_documents && Array.isArray(income_proof_documents)) {
+            incomeProofs.value = income_proof_documents.map((doc: any): IncomeProof => ({
+              id: doc.id || null,
+              month: doc.month || null,
+              type: doc.document_type || doc.type || null,
+              status: getValidationState(doc.status) === 'validated' ? true : 
+                      getValidationState(doc.status) === 'validating' ? 'validating' : 
+                      getValidationState(doc.status) === null ? false : getValidationState(doc.status),
+              sequence_number: doc.sequence_number || null
+            }))
+          } else {
+            incomeProofs.value = []
+          }
+          
+          loading.value = false
+          return // Exit early, we've loaded the documents without prompting for validation
+        } catch (error: any) {
+          // If direct fetch fails, fall back to normal validation flow
+          console.warn('Failed to fetch files directly, falling back to validation:', error)
+          // Continue to normal flow below
+        }
+      } else {
+        // We're in flow but don't have client ID - this shouldn't happen, but handle it
+        console.warn('In flow but no client ID available')
+        loading.value = false
         return
       }
     }
+    
+    // Normal flow: validate client if not coming from flow or if direct fetch failed
+    // Only proceed if we're NOT coming from flow
+    if (!isFromFlow.value) {
+      if (!clientStore.client.id) {
+        const clientData = await clientStore.getClient() as any
+        if (!clientData?.client_id) {
+          $q.notify({
+            type: 'warning',
+            message: 'No se encontró información del cliente. Por favor, inicia sesión.'
+          })
+          router.push('/login')
+          loading.value = false
+          return
+        }
+      }
 
-    const validation = await clientStore.getClient() as any
-    const files = validation?.files || {}
-    const { addressProof, officialId_front, officialId_reverse, income_proof_documents } = files
+      const validation = await clientStore.getClient() as any
+      const files = validation?.files || {}
+      const { addressProof, officialId_front, officialId_reverse, income_proof_documents } = files
 
-    const getValidationState = (status: string | null | undefined): string | null => {
-      if (!status) return null
-      return status === 'validated' ? 'validated' : status === 'validating' ? 'validating' : null
-    }
+      const getValidationState = (status: string | null | undefined): string | null => {
+        if (!status) return null
+        return status === 'validated' ? 'validated' : status === 'validating' ? 'validating' : null
+      }
 
-    documentsStatus.value = {
-      idDocumentFront: getValidationState(officialId_front),
-      idDocumentReverse: getValidationState(officialId_reverse),
-      addressProof: getValidationState(addressProof)
-    }
+      documentsStatus.value = {
+        idDocumentFront: getValidationState(officialId_front),
+        idDocumentReverse: getValidationState(officialId_reverse),
+        addressProof: getValidationState(addressProof)
+      }
 
-    if (income_proof_documents && Array.isArray(income_proof_documents)) {
-      incomeProofs.value = income_proof_documents.map((doc: any): IncomeProof => ({
-        id: doc.id || null,
-        month: doc.month || null,
-        type: doc.document_type || null,
-        status: getValidationState(doc.status),
-        sequence_number: doc.sequence_number || null
-      }))
-    } else {
-      incomeProofs.value = []
+      // Update documentsUploaded status
+      documentsUploaded.value = {
+        idDocumentFront: getValidationState(officialId_front) === 'validated' ? true : 
+                        getValidationState(officialId_front) === 'validating' ? 'validating' : false,
+        idDocumentReverse: getValidationState(officialId_reverse) === 'validated' ? true : 
+                          getValidationState(officialId_reverse) === 'validating' ? 'validating' : false,
+        addressProof: getValidationState(addressProof) === 'validated' ? true : 
+                     getValidationState(addressProof) === 'validating' ? 'validating' : false,
+      }
+
+      if (income_proof_documents && Array.isArray(income_proof_documents)) {
+        incomeProofs.value = income_proof_documents.map((doc: any): IncomeProof => ({
+          id: doc.id || null,
+          month: doc.month || null,
+          type: doc.document_type || null,
+          status: getValidationState(doc.status) === 'validated' ? true : 
+                  getValidationState(doc.status) === 'validating' ? 'validating' : 
+                  getValidationState(doc.status) === null ? false : getValidationState(doc.status),
+          sequence_number: doc.sequence_number || null
+        }))
+      } else {
+        incomeProofs.value = []
+      }
     }
   } catch (error: any) {
     if (error.response?.status === 404) {
@@ -1096,6 +1259,244 @@ async function loadDocuments() {
     }
   } finally {
     loading.value = false
+  }
+}
+
+// Computed properties for document validation (similar to upload-documents.vue)
+const hasDocumentsPendingUpload = computed(() => {
+  const requiredDocuments = ['idDocumentFront', 'idDocumentReverse', 'addressProof']
+  const hasBasicDocumentsPending = requiredDocuments.some((docType) => {
+    const status = documentsUploaded.value[docType as keyof typeof documentsUploaded.value]
+    return status === 'selected'
+  })
+  const hasIncomeProofsPending = incomeProofs.value.some(
+    (proof) => proof.status === 'selected'
+  )
+  return hasBasicDocumentsPending || hasIncomeProofsPending
+})
+
+const areAllDocumentsUploaded = computed(() => {
+  const requiredDocuments = ['idDocumentFront', 'idDocumentReverse', 'addressProof']
+  const basicDocumentsComplete = requiredDocuments.every((docType) => {
+    const status = documentsUploaded.value[docType as keyof typeof documentsUploaded.value]
+    return status === true || status === 'selected' || status === 'validating'
+  })
+  const hasValidIncomeProofs = incomeProofs.value.some(
+    (proof) => proof.status === true || proof.status === 'selected' || proof.status === 'validating'
+  )
+  return basicDocumentsComplete && hasValidIncomeProofs
+})
+
+// Handle form submission - upload all files when user clicks "Subir Documentos"
+async function handleSubmit() {
+  try {
+    if (!hasDocumentsPendingUpload.value) {
+      $q.notify({
+        type: 'warning',
+        message: 'No hay documentos seleccionados para subir'
+      })
+      return
+    }
+
+    isUploading.value = true
+    $q.loading.show({ message: 'Subiendo documentos...' })
+
+    const uploadTasks = []
+
+    // Add basic document upload tasks
+    if (documentsUploaded.value.idDocumentFront === 'selected' && selectedFiles.value.idDocumentFront) {
+      uploadTasks.push({
+        type: 'officialIdFrontClient',
+        file: selectedFiles.value.idDocumentFront,
+        name: 'Identificación (Frente)',
+        docKey: 'idDocumentFront'
+      })
+    }
+    if (documentsUploaded.value.idDocumentReverse === 'selected' && selectedFiles.value.idDocumentReverse) {
+      uploadTasks.push({
+        type: 'officialIdReverseClient',
+        file: selectedFiles.value.idDocumentReverse,
+        name: 'Identificación (Reverso)',
+        docKey: 'idDocumentReverse'
+      })
+    }
+    if (documentsUploaded.value.addressProof === 'selected' && selectedFiles.value.addressProof) {
+      uploadTasks.push({
+        type: 'addressProofClient',
+        file: selectedFiles.value.addressProof,
+        name: 'Comprobante de Domicilio',
+        docKey: 'addressProof'
+      })
+    }
+
+    // Add income proof upload tasks
+    const validIncomeProofs = incomeProofs.value.filter(
+      (proof, idx) =>
+        proof.status === 'selected' &&
+        selectedIncomeProofFiles.value[idx] &&
+        proof.month &&
+        proof.type &&
+        (proof.type !== 'payrollSlipe' || proof.sequence_number)
+    )
+
+    // Group income proofs by month
+    const incomeProofsByMonth: Record<number, typeof validIncomeProofs> = {}
+    validIncomeProofs.forEach((proof) => {
+      const monthKey = typeof proof.month === 'number' ? proof.month : proof.month
+      if (!incomeProofsByMonth[monthKey]) {
+        incomeProofsByMonth[monthKey] = []
+      }
+      incomeProofsByMonth[monthKey].push(proof)
+    })
+
+    // Add income proof upload tasks with proper sequence numbers
+    Object.keys(incomeProofsByMonth).forEach((month) => {
+      const proofsForMonth = incomeProofsByMonth[parseInt(month)]
+      proofsForMonth.forEach((proof, index) => {
+        const proofIndex = incomeProofs.value.findIndex(p => p === proof)
+        const file = selectedIncomeProofFiles.value[proofIndex]
+        if (file) {
+          const monthValue = typeof proof.month === 'number' ? proof.month : proof.month
+          const documentType = proof.type || 'Others'
+          
+          uploadTasks.push({
+            type: 'incomeProof',
+            file: file,
+            name: `Comprobante de Ingresos ${index + 1}`,
+            proofIndex: proofIndex,
+            metadata: {
+              month: monthValue,
+              document_type: documentType,
+              sequence_number: proof.sequence_number || (index + 1),
+            },
+          })
+        }
+      })
+    })
+
+    // Ensure client ID is set
+    if (!clientStore.client.id) {
+      const clientData = await clientStore.getClient() as any
+      if (!clientData?.client_id) {
+        throw new Error('No se pudo obtener el ID del cliente')
+      }
+    }
+
+    // Upload files sequentially
+    for (const task of uploadTasks) {
+      try {
+        // Set status to validating
+        if (task.type === 'incomeProof' && task.proofIndex !== undefined) {
+          incomeProofs.value[task.proofIndex].status = 'validating'
+        } else if (task.docKey) {
+          documentsUploaded.value[task.docKey as keyof typeof documentsUploaded.value] = 'validating'
+        }
+
+        // Upload the file
+        if (task.metadata) {
+          // Income proof upload - use /client/upload endpoint
+          const nuxtApp = useNuxtApp()
+          const axios = nuxtApp.$axios as any
+          const formData = new FormData()
+          
+          const fileExtension = task.file.name.split('.').pop()
+          const newFileName = `incomeProofClient.${fileExtension}`
+          const renamedFile = new File([task.file], newFileName, { type: task.file.type })
+
+          // Use the same format as regular uploads but include income proof metadata
+          formData.append('client_id', clientStore.client.id.toString())
+          formData.append('file_type', 'incomeProof')
+          formData.append('file', renamedFile)
+          formData.append('month', task.metadata.month.toString())
+          formData.append('document_type', task.metadata.document_type)
+          if (task.metadata.sequence_number) {
+            formData.append('sequence_number', task.metadata.sequence_number.toString())
+          }
+          formData.append('validated', 'false')
+
+          // Use /client/upload endpoint (baseURL already includes /api)
+          await axios.post('/client/upload', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            },
+            params: {
+              type: 'incomeProof'
+            }
+          })
+
+          // Set status to completed
+          if (task.proofIndex !== undefined) {
+            incomeProofs.value[task.proofIndex].status = true
+          }
+        } else {
+          // Basic document upload
+          await clientStore.uploadFile(task.type, task.file)
+          
+          // Set status to completed
+          if (task.docKey) {
+            documentsUploaded.value[task.docKey as keyof typeof documentsUploaded.value] = true
+          }
+        }
+
+        $q.notify({
+          type: 'positive',
+          message: `${task.name} subido correctamente`
+        })
+      } catch (error: any) {
+        // Reset status on error
+        if (task.type === 'incomeProof' && task.proofIndex !== undefined) {
+          incomeProofs.value[task.proofIndex].status = 'selected'
+        } else if (task.docKey) {
+          documentsUploaded.value[task.docKey as keyof typeof documentsUploaded.value] = 'selected'
+        }
+
+        $q.notify({
+          type: 'negative',
+          message: `Error al subir ${task.name}: ${error.response?.data?.error || error.message || error}`
+        })
+        throw error
+      }
+    }
+
+    // Reload documents to get updated status
+    await loadDocuments()
+
+    $q.notify({
+      type: 'positive',
+      message: 'Todos los documentos han sido subidos correctamente'
+    })
+  } catch (error: any) {
+    $q.notify({
+      type: 'negative',
+      message: `Error al subir documentos: ${error.message || error}`
+    })
+  } finally {
+    isUploading.value = false
+    $q.loading.hide()
+  }
+}
+
+// Handle navigation to next step
+function handleNavigateToNextStep() {
+  const { nextStep } = flowProcessStore.getPreviousAndNextStep(route.name as string)
+  
+  if (nextStep) {
+    // Navigate to credit-approval-result for onCreditWeb flow
+    if (flowProcessStore.flowProcess === 'onCreditWeb' || flowProcessStore.flowProcess === 'assistedQuote' || flowProcessStore.flowProcess === 'sferaProcess') {
+      router.push({
+        name: 'credit-approval-result',
+        query: {
+          solicitudStatus: 'updated',
+        },
+      })
+    } else {
+      router.push({ name: nextStep })
+    }
+  } else {
+    $q.notify({
+      type: 'warning',
+      message: 'No hay siguiente paso configurado'
+    })
   }
 }
 
@@ -1438,6 +1839,53 @@ onMounted(() => {
 @media (min-width: 1025px) {
   .document-items {
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+}
+
+/* Action Buttons */
+.action-buttons-container {
+  max-width: 56rem;
+  margin: 2rem auto 0;
+  padding: 0 1rem;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  min-width: 200px;
+  height: 3rem;
+  font-weight: 600;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.submit-btn {
+  background: linear-gradient(135deg, #2FFF96 0%, #26e085 100%);
+  border: none;
+}
+
+.continue-btn {
+  background: linear-gradient(135deg, #2FFF96 0%, #26e085 100%);
+  border: none;
+}
+
+@media (max-width: 640px) {
+  .action-buttons-container {
+    padding: 0 0.75rem;
+    flex-direction: column;
+  }
+
+  .action-btn {
+    width: 100%;
+    min-width: unset;
   }
 }
 </style>

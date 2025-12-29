@@ -21,9 +21,21 @@ Migration of `nuxt-naive-project` to use **Nuxt 3** with **Quasar components** (
    
    Create a `.env` file in the root directory:
    ```env
+   # Supabase Configuration
+   # Get your Supabase Project ID from your Supabase dashboard:
+   # 1. Go to https://app.supabase.com
+   # 2. Select your project
+   # 3. Go to Settings > API
+   # 4. Copy the "Project URL" and extract the project ID (the part before .supabase.co)
+   # Example: If your URL is https://abcdefghijklmnop.supabase.co, then your Project ID is: abcdefghijklmnop
+   NUXT_PUBLIC_SUPABASE_PROJECT_ID=your-supabase-project-id-here
+   
+   # Backend API Configuration
    NUXT_PUBLIC_FLASK_BACKEND_URL=http://localhost:5000
    NUXT_PUBLIC_FLASK_BACKEND_KEY=your-api-key-here
    ```
+   
+   **Important:** Replace `your-supabase-project-id-here` with your actual Supabase Project ID.
 
 ## Development
 

@@ -1,217 +1,114 @@
 <template>
   <div class="bank-quotes-container">
-    <h2 v-if="title" class="quotes-title">{{ title }}</h2>
 
-    <div class="quotes-grid">
-      <q-card
+    <div class="quotes-list">
+      <div
         v-for="(bankGroup, index) in quotesWithInsurance"
         :key="index"
-        class="bank-quote-card"
-        @click="handleQuoteCardClick(bankGroup[0])"
+        class="quote-card"
+        :class="{ 'quote-card-selected': selectedCardIndex === index }"
+        @click="handleQuoteCardClick(bankGroup[0], index)"
       >
-        <q-card-section>
-          <!-- Bank Header -->
-          <div class="bank-header">
+        <div class="quote-card-content">
+          <div class="quote-card-header">
             <div class="bank-info">
-              <div class="bank-logo-wrapper">
+              <div class="bank-logo-container">
                 <img
-                  v-if="['maxikash'].includes(bankGroup[0].bank.toLowerCase())"
-                  :src="`/assets/${bankGroup[0].bank.toLowerCase()}-logo.png`"
+                  :src="bankLogo(bankGroup[0].bank_logo, bankGroup[0].bank)"
                   :alt="bankGroup[0].bank"
                   class="bank-logo"
-                  @error="handleLogoError"
+                  @error="handleBankLogoError"
                 />
-                <img
-                  v-else-if="bankGroup[0].bank_logo"
-                  :src="getBankLogoUrl(bankGroup[0].bank_logo)"
-                  :alt="bankGroup[0].bank"
-                  class="bank-logo"
-                  @error="handleLogoError"
-                />
-                <div v-else class="bank-logo-placeholder">
-                  <q-icon name="account_balance" size="24px" />
-                </div>
               </div>
-              <h3 class="bank-name">{{ bankGroup[0].bank }}</h3>
+              <div class="bank-details">
+                <h3 class="bank-name">{{ bankGroup[0].bank }}</h3>
+              </div>
             </div>
 
-            <!-- Insurance Toggle -->
-            <div v-if="hasInsuranceForBank(bankGroup)" class="insurance-toggle">
-              <span class="toggle-label">
-                {{ bankToggles[index] ? 'Seguro incluido' : 'Incluir seguro' }}
+            <div v-if="hasInsuranceForBank(bankGroup)" class="insurance-toggle-container">
+              <span class="insurance-label">
+                {{ bankToggles[index] ? 'Seguro incluido' : 'Sin Seguro' }}
               </span>
               <q-toggle
                 v-model="bankToggles[index]"
                 :disable="!isToggleEnabled(bankGroup)"
+                color="dark"
+                dense
                 size="sm"
-                color="primary"
-                class="insurance-switch"
               />
             </div>
-            <div v-else class="no-insurance">
-              <q-icon name="info" size="16px" />
-              <span class="text-sm">Seguro no disponible</span>
-            </div>
           </div>
 
-          <!-- Main Payment Info -->
-          <div class="payment-info">
-            <div class="payment-row">
-              <span class="payment-label">
-                <span v-if="shouldShowInsurance(bankGroup, index) && getInsuranceMethod(bankGroup, index) === 'Contado' && shouldShowLifeUnemploymentInsurance(bankGroup) && getLifeUnemploymentInsuranceAmount(bankGroup, index) > 0">
-                  Enganche + Comisión + Seguro + Vida/Desempleo:
-                </span>
-                <span v-else-if="shouldShowInsurance(bankGroup, index) && getInsuranceMethod(bankGroup, index) === 'Contado'">
-                  Enganche + Comisión + Seguro:
-                </span>
-                <span v-else>
-                  Enganche + Comisión por apertura:
-                </span>
-              </span>
-              <span class="payment-value">
-                {{ formatCurrency(getInitialPayment(bankGroup, index)) }}
-              </span>
-            </div>
-
-            <div class="payment-row highlight">
-              <span class="payment-label">
-                <span v-if="shouldShowInsurance(bankGroup, index) && getInsuranceMethod(bankGroup, index) === 'Contado'">
-                  Pago mensual:
-                </span>
-                <span v-else-if="shouldShowInsurance(bankGroup, index) && getInsuranceMethod(bankGroup, index) === 'Financiado' && shouldShowLifeUnemploymentInsurance(bankGroup) && getLifeUnemploymentInsuranceAmount(bankGroup, index) > 0">
-                  Pago mensual (incluye seguro + vida/desempleo):
-                </span>
-                <span v-else-if="shouldShowInsurance(bankGroup, index) && getInsuranceMethod(bankGroup, index) === 'Financiado'">
-                  Pago mensual (incluye seguro):
-                </span>
-                <span v-else>
-                  Pago mensual:
-                </span>
-              </span>
-              <span class="payment-value monthly">
-                {{ formatCurrency(getMonthlyPayment(bankGroup, index)) }}
-              </span>
-            </div>
-          </div>
-
-          <!-- Loan Details -->
-          <q-card class="loan-details-card">
-            <q-card-section class="q-pa-md">
-              <div class="loan-details-grid">
-                <div class="detail-item">
-                  <span class="detail-label">Plazo:</span>
-                  <span class="detail-value">{{ bankGroup[0].quote?.loan_term_months || bankGroup[0].term || 'N/A' }} meses</span>
-                </div>
-
-                <div class="detail-item">
-                  <span class="detail-label">Tasa de interés:</span>
-                  <span class="detail-value">
-                    {{ ((bankGroup[0].avg_interest_rate || bankGroup[0].apr || 0) * 100).toFixed(1) }}%
-                  </span>
-                </div>
-
-                <div class="detail-item">
-                  <q-tooltip>
-                    Comisión por apertura + Enganche + Pagos mensuales
-                  </q-tooltip>
-                  <div class="detail-item-with-info">
-                    <q-icon name="info" size="14px" />
-                    <span class="detail-label">Total a pagar:</span>
-                  </div>
-                  <span class="detail-value">
-                    {{ formatCurrency(getTotalAmount(bankGroup, index)) }}
-                  </span>
-                </div>
+          <div class="payment-unified-container">
+            <div class="payment-section initial-base">
+              <div class="centered-icon-wrapper">
+                <q-icon name="account_balance_wallet" size="24px" />
               </div>
-            </q-card-section>
-          </q-card>
-
-          <!-- Compatibility Badge -->
-          <div class="compatibility-badge">
-            <q-icon name="check_circle" size="16px" />
-            <span>Oferta compatible con tu moto</span>
-          </div>
-
-          <!-- Insurance Info -->
-          <div v-if="shouldShowInsurance(bankGroup, index)" class="insurance-info">
-            <div class="insurance-item">
-              <img
-                src="/assets/qualitas-logo.jpeg"
-                alt="QUALITAS"
-                class="insurance-logo"
-                @error="handleLogoError"
-              />
-              <span class="insurance-text">Seguro incluido: AMPLIA</span>
-              <q-btn
-                flat
-                dense
-                round
-                size="sm"
-                icon="info"
-                class="info-button"
-              >
-                <q-popup-proxy>
-                  <q-card>
-                    <q-card-section>
-                      <div class="coverage-list">
-                        <div
-                          v-for="(coverage, idx) in getCoverageNames(bankGroup, index)"
-                          :key="idx"
-                          class="coverage-item"
-                        >
-                          <q-icon name="check" size="14px" class="coverage-icon" />
-                          <span>{{ coverage }}</span>
-                        </div>
-                      </div>
-                    </q-card-section>
-                  </q-card>
-                </q-popup-proxy>
-              </q-btn>
+              <div class="payment-info">
+                <p class="payment-label">Pago inicial</p>
+                <p v-if="shouldShowInsurance(bankGroup, index) && getInsuranceMethod(bankGroup, index) === 'Contado' && shouldShowLifeUnemploymentInsurance(bankGroup) && getLifeUnemploymentInsuranceAmount(bankGroup, index) > 0" class="payment-label-info">
+                  Enganche + Comisión por apertura + Seguro + Vida/Desempleo
+                </p>
+                <p v-else-if="shouldShowInsurance(bankGroup, index) && getInsuranceMethod(bankGroup, index) === 'Contado'" class="payment-label-info">
+                  Enganche + Comisión por apertura + Seguro
+                </p>
+                <p v-else class="payment-label-info">
+                  Enganche + Comisión por apertura
+                </p>
+                <div class="payment-amount-small">{{ formatCurrency(getInitialPayment(bankGroup, index)) }}</div>
+              </div>
             </div>
 
-            <!-- Life Unemployment Insurance -->
-            <div
-              v-if="shouldShowLifeUnemploymentInsurance(bankGroup) && getLifeUnemploymentInsuranceAmount(bankGroup, index) > 0"
-              class="insurance-item life-insurance"
-            >
-              <q-icon name="shield" size="20px" />
-              <span class="insurance-text">Seguro de vida y desempleo incluido</span>
-              <q-btn
-                flat
-                dense
-                round
-                size="sm"
-                icon="info"
-                class="info-button"
-              >
-                <q-popup-proxy>
-                  <q-card>
-                    <q-card-section>
-                      <div class="life-insurance-info">
-                        <div class="info-title">Seguro de Vida y Desempleo</div>
-                        <div class="info-description">Protección adicional incluida en el financiamiento</div>
-                        <div class="info-amount">
-                          Monto: {{ formatCurrency(getLifeUnemploymentInsuranceAmount(bankGroup, index)) }}
-                        </div>
-                      </div>
-                    </q-card-section>
-                  </q-card>
-                </q-popup-proxy>
-              </q-btn>
+            <div class="payment-section monthly-highlight">
+              <div class="centered-icon-wrapper">
+                <q-icon name="payments" size="24px" />
+              </div>
+              <div class="payment-info">
+                <p class="payment-label">Pago mensual</p>
+                <p v-if="shouldShowInsurance(bankGroup, index) && getInsuranceMethod(bankGroup, index) === 'Financiado' && shouldShowLifeUnemploymentInsurance(bankGroup) && getLifeUnemploymentInsuranceAmount(bankGroup, index) > 0" class="payment-label-info">
+                  Incluye seguro + vida/desempleo
+                </p>
+                <p v-else-if="shouldShowInsurance(bankGroup, index) && getInsuranceMethod(bankGroup, index) === 'Financiado'" class="payment-label-info">
+                  Incluye pago del seguro
+                </p>
+                <div class="payment-amount">{{ formatCurrency(getMonthlyPayment(bankGroup, index)) }}</div>
+              </div>
+            </div>
+
+            <div class="payment-details-row">
+              <div class="detail-item">
+                <span class="detail-label">Tasa de interés</span>
+                <span class="detail-value">{{ ((bankGroup[0].avg_interest_rate || 0) * 100).toFixed(2) }}%</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Total a pagar</span>
+                <span class="detail-value">{{ formatCurrency(getTotalAmount(bankGroup, index)) }}</span>
+              </div>
             </div>
           </div>
 
-          <!-- Disclaimer -->
-          <div class="disclaimer">
-            <p v-if="shouldShowInsurance(bankGroup, index)" class="disclaimer-text">
-              *Esta cotización es aproximada.
-            </p>
-            <p v-else class="disclaimer-text">
-              *Esta cotización es aproximada, no incluye el seguro y es requerido por la financiera
-            </p>
+          <div class="quote-card-footer">
+            <div class="insurance-details-stack">
+              <div v-if="bankToggles[index]" class="insurance-status-item">
+                <q-icon name="verified" size="16px" />
+                <span class="status-text">Seguro incluido: <strong>AMPLIA</strong></span>
+              </div>
+              
+              <div v-if="bankToggles[index] && shouldShowLifeUnemploymentInsurance(bankGroup)" class="insurance-status-item">
+                <q-icon name="verified_user" size="16px" />
+                <span class="status-text">Seguro de vida y desempleo incluido</span>
+              </div>
+
+              <div class="compatibility-tag">
+                <q-icon name="check_circle" size="16px" />
+                <span>Oferta compatible con tu moto</span>
+              </div>
+            </div>
+            
+            <p class="quote-disclaimer">*Esta cotización es aproximada.</p>
           </div>
-        </q-card-section>
-      </q-card>
+        </div>
+      </div>
     </div>
 
     <slot name="footer"></slot>
@@ -220,6 +117,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRuntimeConfig } from 'nuxt/app'
+
+const config = useRuntimeConfig()
 
 // Props
 const props = defineProps({
@@ -238,10 +138,6 @@ const props = defineProps({
     required: false,
     default: () => ({}),
   },
-  title: {
-    type: String,
-    default: 'Opciones de financiamiento',
-  },
   insurancePaymentMethod: {
     type: String,
     default: 'Financiamiento',
@@ -250,6 +146,7 @@ const props = defineProps({
 
 // State
 const bankToggles = ref<Record<number, boolean>>({})
+const selectedCardIndex = ref<number | null>(null)
 
 // Computed
 const quotesWithInsurance = computed(() => {
@@ -324,14 +221,50 @@ const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
     currency: 'MXN',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value)
 }
 
-const getBankLogoUrl = (bankLogoDomain: string) => {
-  if (!bankLogoDomain) return ''
-  return `https://logo.clearbit.com/${bankLogoDomain}`
+// Get bank logo from Supabase storage
+const bankLogo = (bankLogoDomain: string, bankName: string) => {
+  // Use bank name directly if available, otherwise extract from domain
+  let normalizedBankName = ''
+  
+  if (bankName) {
+    // Use the bank name directly, normalized to lowercase
+    normalizedBankName = bankName.toLowerCase().trim()
+  } else if (bankLogoDomain) {
+    // Fallback: extract bank name from domain (e.g., "bbva.com" -> "bbva")
+    if (bankLogoDomain.includes('.')) {
+      normalizedBankName = bankLogoDomain.split('.')[0].toLowerCase()
+    } else {
+      normalizedBankName = bankLogoDomain.toLowerCase()
+    }
+  } else {
+    // No bank identifier available
+    return '/assets/bank-placeholder.png'
+  }
+  
+  // Get Supabase project ID from config
+  const supabaseProjectId = config.public.SUPABASE_PROJECT_ID
+  
+  if (!supabaseProjectId) {
+    console.warn('SUPABASE_PROJECT_ID not configured, falling back to placeholder')
+    return '/assets/bank-placeholder.png'
+  }
+  
+  // Build Supabase storage URL: documents/banks/{bankName}.webp
+  return `https://${supabaseProjectId}.supabase.co/storage/v1/object/public/documents/banks/${normalizedBankName}.webp`
+}
+
+// Handle bank logo loading errors
+const handleBankLogoError = (event: Event) => {
+  // Fallback to placeholder if Supabase image fails to load
+  const target = event.target as HTMLImageElement
+  if (target && target.src && !target.src.includes('bank-placeholder')) {
+    target.src = '/assets/bank-placeholder.png'
+  }
 }
 
 const isToggleEnabled = (bankGroup: any[]) => {
@@ -347,14 +280,20 @@ const shouldShowLifeUnemploymentInsurance = (bankGroup: any[]) => {
 const handleLogoError = (event: Event) => {
   const target = event.target as HTMLImageElement
   if (target) {
-    target.style.display = 'none'
+    // Try to fallback to placeholder
+    if (target.src && !target.src.includes('bank-placeholder')) {
+      target.src = '/assets/bank-placeholder.png'
+    } else {
+      target.style.display = 'none'
+    }
   }
 }
 
 // Emits
 const emit = defineEmits(['update-insurance-option', 'quote-card-clicked', 'selected'])
 
-const handleQuoteCardClick = (quote: any) => {
+const handleQuoteCardClick = (quote: any, index: number) => {
+  selectedCardIndex.value = selectedCardIndex.value === index ? null : index
   emit('quote-card-clicked', quote)
   emit('selected', quote)
 }
@@ -370,332 +309,324 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Inter Font */
-:deep(*) {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
+/* Core Business Colors */
 .bank-quotes-container {
-  width: 100%;
+  --text-dark: #242424;
+  --bg-monthly: #2FFF96;
+  --bg-initial: #f0fdf4;
+  max-width: 800px;
+  margin: 0 auto;
+  font-family: 'Inter', sans-serif;
 }
 
-.quotes-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin-bottom: 1.5rem;
-}
-
-.quotes-grid {
+.quotes-list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 20px;
 }
 
-@media (min-width: 768px) {
-  .quotes-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .quotes-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-.bank-quote-card {
+.quote-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 16px;
+  margin-bottom: 20px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  border: 2px solid #e5e7eb;
+  transition: all 0.2s ease;
+  overflow: hidden;
 }
 
-.bank-quote-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(38, 224, 133, 0.15);
-  border-color: #26e085;
+.quote-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
-/* Bank Header */
-.bank-header {
+.quote-card-selected {
+  border: 2px solid var(--text-dark);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.quote-card-content {
+  padding: 0;
+}
+
+.quote-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.25rem;
-  gap: 1rem;
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .bank-info {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 12px;
   flex: 1;
 }
 
-.bank-logo-wrapper {
-  width: 2.5rem;
-  height: 2.5rem;
+/* Header */
+.bank-logo-container {
+  width: 44px;
+  height: 44px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  padding: 4px;
 }
 
 .bank-logo {
-  width: 100%;
-  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
 }
 
-.bank-logo-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f3f4f6;
-  border-radius: 0.5rem;
-  color: #9ca3af;
-}
-
-.bank-name {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin: 0;
-}
-
-.insurance-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-.toggle-label {
-  font-size: 0.875rem;
-  color: #6b7280;
-  white-space: nowrap;
-}
-
-.insurance-switch {
-  flex-shrink: 0;
-}
-
-.no-insurance {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #9ca3af;
-  font-size: 0.875rem;
-}
-
-/* Payment Info */
-.payment-info {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-
-.payment-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.payment-row.highlight {
-  padding: 0.75rem;
-  background: linear-gradient(135deg, rgba(47, 255, 150, 0.1) 0%, rgba(38, 224, 133, 0.1) 100%);
-  border-radius: 0.75rem;
-  border: 1px solid rgba(38, 224, 133, 0.2);
-}
-
-.payment-label {
-  font-size: 0.875rem;
-  color: #6b7280;
-  font-weight: 500;
-  line-height: 1.4;
+.bank-details {
   flex: 1;
 }
 
-.payment-value {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #1a1a1a;
+.bank-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+.insurance-toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  background: white;
+}
+
+.insurance-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
-.payment-value.monthly {
-  font-size: 1.5rem;
-  color: #26e085;
+/* Unified Container Styling */
+.payment-unified-container {
+  margin: 0 16px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.05);
 }
 
-/* Loan Details */
-.loan-details-card {
-  margin-bottom: 1.25rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-}
-
-.loan-details-grid {
+.payment-section {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  align-items: center;
+  padding: 20px;
+  gap: 20px;
+}
+
+.monthly-highlight { 
+  background-color: var(--bg-monthly); 
+  color: var(--text-dark); 
+}
+
+.initial-base { 
+  background-color: var(--bg-initial); 
+  color: var(--text-dark); 
+  border-top: 1px solid rgba(0,0,0,0.05); 
+}
+
+.centered-icon-wrapper {
+  width: 52px;
+  height: 52px;
+  background: rgba(255,255,255,0.4);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.payment-info {
+  flex-grow: 1;
+}
+
+.payment-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  color: var(--text-dark);
+  line-height: 1.4;
+}
+
+.payment-label-info {
+  font-weight: 400;
+  opacity: 0.7;
+  font-size: 0.75rem;
+  margin: 0 0 8px 0;
+  color: var(--text-dark);
+  line-height: 1.3;
+  display: block;
+}
+
+.payment-amount { 
+  font-size: 1.75rem; 
+  font-weight: 900; 
+  letter-spacing: -1px; 
+  color: var(--text-dark);
+  margin: 4px 0;
+}
+
+.payment-amount-small { 
+  font-size: 1.4rem; 
+  font-weight: 800; 
+  color: var(--text-dark);
+  margin: 4px 0;
+}
+
+.payment-term-badge {
+  display: inline-block;
+  background: var(--text-dark);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.payment-details-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: #f9f9f9;
+  padding: 16px 20px;
+  gap: 20px;
+  border-top: 1px solid rgba(0,0,0,0.05);
 }
 
 .detail-item {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-}
-
-.detail-item-with-info {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  color: #6b7280;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
 }
 
 .detail-label {
-  font-size: 0.875rem;
-  color: #6b7280;
+  font-size: 0.7rem;
+  color: #666;
+  margin-bottom: 6px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .detail-value {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #1a1a1a;
-  text-align: right;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-dark);
+  letter-spacing: -0.01em;
+  word-break: break-word;
 }
 
-/* Compatibility Badge */
-.compatibility-badge {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #26e085;
-  font-weight: 600;
-  font-size: 0.875rem;
-  margin-bottom: 1rem;
-  padding: 0.5rem;
-  background: rgba(38, 224, 133, 0.1);
-  border-radius: 0.5rem;
+/* Footer & Insurance Items */
+.quote-card-footer {
+  padding: 16px;
+  border-top: 1px solid #f0f0f0;
 }
 
-/* Insurance Info */
-.insurance-info {
+.insurance-details-stack {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: 8px;
 }
 
-.insurance-item {
+.insurance-status-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: #6b7280;
-  font-weight: 500;
-  font-size: 0.875rem;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-dark);
+  opacity: 0.8;
 }
 
-.insurance-item.life-insurance {
-  color: #3b82f6;
+.insurance-status-item .q-icon {
+  color: var(--text-dark);
+  opacity: 0.6;
 }
 
-.insurance-logo {
-  width: 2rem;
-  height: 2rem;
-  object-fit: contain;
-}
-
-.insurance-text {
+.status-text {
   flex: 1;
-}
-
-.info-button {
-  color: #9ca3af;
-}
-
-.coverage-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.5rem 0;
-}
-
-.coverage-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-}
-
-.coverage-icon {
-  color: #26e085;
-  flex-shrink: 0;
-}
-
-.life-insurance-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-}
-
-.info-title {
-  font-weight: 600;
-  color: #1a1a1a;
-}
-
-.info-description {
-  color: #6b7280;
-}
-
-.info-amount {
-  color: #3b82f6;
+  color: var(--text-dark);
   font-weight: 500;
 }
 
-/* Disclaimer */
-.disclaimer {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
+.status-text strong {
+  font-weight: 700;
 }
 
-.disclaimer-text {
-  font-size: 0.75rem;
-  color: #9ca3af;
-  margin: 0;
-  line-height: 1.4;
+.compatibility-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-dark);
+  font-weight: 500;
+  opacity: 0.7;
+  margin-top: 4px;
 }
 
-/* Responsive */
-@media (max-width: 640px) {
-  .bank-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-  }
+.compatibility-tag .q-icon {
+  color: var(--text-dark);
+  opacity: 0.6;
+}
 
-  .insurance-toggle {
-    width: 100%;
-    justify-content: space-between;
-  }
+.quote-disclaimer {
+  font-size: 0.7rem;
+  color: #9e9e9e;
+  margin-top: 16px;
+  margin-bottom: 0;
+}
 
-  .payment-row {
-    flex-direction: column;
-    gap: 0.5rem;
+/* Mobile Responsiveness */
+@media (max-width: 600px) {
+  .payment-section { 
+    padding: 16px; 
+    gap: 12px; 
   }
-
-  .payment-value {
-    text-align: left;
+  .payment-amount { 
+    font-size: 1.4rem; 
+  }
+  .centered-icon-wrapper { 
+    width: 40px; 
+    height: 40px; 
+  }
+  .payment-unified-container {
+    margin: 0 12px 12px 12px;
+  }
+  .quote-card-header {
+    padding: 12px;
+  }
+  .quote-card-footer {
+    padding: 12px;
+  }
+  .payment-details-row {
+    padding: 12px 16px;
+    gap: 16px;
+  }
+  .detail-value {
+    font-size: 0.9rem;
+  }
+  .insurance-status-item {
+    font-size: 0.75rem;
+    gap: 6px;
+  }
+  .compatibility-tag {
+    font-size: 0.75rem;
+    gap: 5px;
+  }
+  .payment-label-info {
+    font-size: 0.75rem;
   }
 }
 </style>

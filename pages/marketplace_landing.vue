@@ -42,29 +42,26 @@
                 style="grid-area: hero; align-self: center; justify-self: start;"
               >
                 <div
-                  class="bg-black/60 sm:bg-black/40 backdrop-blur-md
-                        p-3 sm:p-4 md:p-6 lg:p-8
-                        rounded-lg sm:rounded-xl md:rounded-2xl
-                        w-[92%] sm:w-auto max-w-md md:max-w-xl
+                  class="hero-content-box
                         fade-slide-content mobile-compact-content"
                 >
                   <h1
-                    class="text-white font-inter
-                    text-lg sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl
-                    font-bold leading-tight mb-2 sm:mb-3 md:mb-4"
+                    class="hero-title"
                   >
                     {{ slideItem.title }}
                   </h1>
 
-                  <div class="flex flex-col sm:flex-row gap-2 md:gap-3">
+                  <div class="cta-buttons">
                     <!-- Primary CTA -->
-                    <NuxtLink to="/quote-generator">
+                    <NuxtLink to="/quote-generator" class="cta-link">
                       <q-btn
                         rounded
                         size="lg"
                         color="primary"
-                        class="primary-btn w-full sm:w-auto"
+                        class="primary-cta-btn"
+                        unelevated
                       >
+                        <q-icon name="calculate" class="q-mr-sm" />
                         Cotizar Ahora
                       </q-btn>
                     </NuxtLink>
@@ -75,8 +72,10 @@
                       size="lg"
                       outline
                       color="primary"
-                      class="secondary-btn w-full sm:w-auto"
+                      class="secondary-cta-btn"
+                      unelevated
                     >
+                      <q-icon name="two_wheeler" class="q-mr-sm" />
                       Ver Motocicletas
                     </q-btn>
                   </div>
@@ -299,24 +298,276 @@ html, body {
   max-width: 100vw;
 }
 
+/* CTA Buttons */
+.cta-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .cta-buttons {
+    flex-direction: row;
+    gap: 1rem;
+  }
+}
+
+.cta-link {
+  display: block;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .cta-link {
+    width: auto;
+  }
+}
+
+:deep(.primary-cta-btn) {
+  background: linear-gradient(135deg, #2FFF96 0%, #26e085 100%);
+  color: white;
+  font-weight: 700;
+  font-size: 1rem;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  padding: 0.75rem 1.5rem;
+  box-shadow: 0 4px 16px rgba(38, 224, 133, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  :deep(.primary-cta-btn) {
+    width: auto;
+  }
+}
+
+:deep(.primary-cta-btn:hover) {
+  box-shadow: 0 8px 24px rgba(38, 224, 133, 0.4);
+  transform: translateY(-2px);
+}
+
+:deep(.secondary-cta-btn) {
+  border: 2px solid white;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  padding: 0.75rem 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  :deep(.secondary-cta-btn) {
+    width: auto;
+  }
+}
+
+:deep(.secondary-cta-btn:hover) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #2FFF96;
+  color: #2FFF96;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+}
+
+/* Motorcycle Cards Section */
+section {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Section Headings */
+h2 {
+  position: relative;
+  padding-bottom: 0.75rem;
+}
+
+h2::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, #2FFF96 0%, #26e085 100%);
+  border-radius: 2px;
+}
+
+@media (min-width: 768px) {
+  h2::after {
+    width: 80px;
+  }
+}
+
 /* Bank Logos Section */
 .bank-logo-container {
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.bank-logo-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(47, 255, 150, 0.05) 0%, rgba(38, 224, 133, 0.02) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.bank-logo-container:hover::before {
+  opacity: 1;
 }
 
 .bank-logo-container:hover {
-  transform: translateY(-4px);
-  border: 1px solid rgba(47, 255, 150, 0.3);
+  transform: translateY(-6px);
+  border: 1px solid rgba(47, 255, 150, 0.4);
+  box-shadow: 0 8px 20px rgba(47, 255, 150, 0.15);
 }
 
 .bank-logo-container img {
   transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .bank-logo-container:hover img {
-    transform: scale(1.1);
+    transform: scale(1.15);
+    filter: grayscale(0) !important;
+    opacity: 1 !important;
   }
+}
+
+/* Improved Hero Content */
+.mobile-compact-content {
+  animation: slideInFromLeft 0.6s ease-out;
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Hero Content Box */
+.hero-content-box {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(12px);
+  padding: 1rem;
+  border-radius: 1rem;
+  width: 92%;
+  max-width: 28rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+@media (min-width: 640px) {
+  .hero-content-box {
+    background: rgba(0, 0, 0, 0.45);
+    padding: 1.5rem;
+    border-radius: 1.25rem;
+    width: auto;
+    max-width: 36rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .hero-content-box {
+    padding: 2rem;
+    border-radius: 1.5rem;
+    max-width: 42rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero-content-box {
+    padding: 2.5rem;
+    max-width: 48rem;
+  }
+}
+
+.hero-title {
+  color: white;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 1.125rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0 0 1rem 0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  letter-spacing: -0.02em;
+}
+
+@media (min-width: 640px) {
+  .hero-title {
+    font-size: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .hero-title {
+    font-size: 1.875rem;
+    margin-bottom: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero-title {
+    font-size: 2.25rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .hero-title {
+    font-size: 3rem;
+  }
+}
+
+@media (min-width: 1536px) {
+  .hero-title {
+    font-size: 3.75rem;
+  }
+}
+
+/* Enhanced Typography */
+h1 {
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  letter-spacing: -0.02em;
+}
+
+/* Section Spacing Improvements */
+section {
+  scroll-margin-top: 80px;
+}
+
+/* Smooth Scroll Behavior */
+html {
+  scroll-behavior: smooth;
 }
 </style>
 

@@ -102,25 +102,7 @@
                     @click="navigateToQuote"
                     icon="shopping_cart"
                   >
-                    Cotizar
-                  </q-btn>
-                  <q-btn
-                    rounded
-                    size="md"
-                    class="flex-1 action-btn action-btn-financing"
-                    @click="navigateToFinancing"
-                    icon="account_balance"
-                  >
-                    Empezar financiamiento
-                  </q-btn>
-                  <q-btn
-                    rounded
-                    size="md"
-                    class="flex-1 action-btn action-btn-store"
-                    @click="findStore"
-                    icon="store"
-                  >
-                    Encuentra tu tienda
+                    Cotiza Ahora
                   </q-btn>
                 </div>
               </div>
@@ -447,9 +429,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
+import { useMotorcycleStore } from '@/stores/motorcycleStore'
+import { useSolicitudStore } from '@/stores/solicitudStore'
 
 const route = useRoute()
 const $q = useQuasar()
+const motorcycleStore = useMotorcycleStore()
+const solicitudStore = useSolicitudStore()
 
 const motorcycle = ref(null)
 const loading = ref(true)
@@ -568,6 +554,58 @@ const openImageLightbox = (imageURL) => {
   lightbox.value = true
 }
 
+// Helper function to extract numeric price from formatted string or number
+const extractPriceNumber = (price) => {
+  if (typeof price === 'number') {
+    return price
+  }
+  if (typeof price === 'string') {
+    // Remove currency symbols, commas, and spaces, then parse
+    const numericValue = parseFloat(price.replace(/[^0-9.-]/g, ''))
+    return isNaN(numericValue) ? null : numericValue
+  }
+  return null
+}
+
+// Save motorcycle data to motorcycleStore.form
+const saveToMotorcycleStore = () => {
+  if (!motorcycle.value) return
+
+  const brand = motorcycle.value.brand || ''
+  const model = motorcycle.value.model || ''
+  const year = motorcycle.value.year ? parseInt(motorcycle.value.year) : new Date().getFullYear()
+  const priceNumber = extractPriceNumber(motorcycle.value.price)
+
+  // Update motorcycleStore.form
+  motorcycleStore.form.brand = brand
+  motorcycleStore.form.model = model
+  motorcycleStore.form.year = year
+  motorcycleStore.form.price = priceNumber || ''
+  
+  // Also set motorcycleId if available
+  if (motorcycle.value.id) {
+    motorcycleStore.motorcycleId = motorcycle.value.id
+  }
+}
+
+// Save motorcycle data to solicitudStore.solicitud (similar to original store)
+const saveToSolicitudStore = () => {
+  if (!motorcycle.value) return
+
+  const motorcycleId = motorcycle.value.id ? parseInt(motorcycle.value.id) : null
+  const brand = motorcycle.value.brand || ''
+  const model = motorcycle.value.model || ''
+  const year = motorcycle.value.year ? parseInt(motorcycle.value.year) : new Date().getFullYear()
+  const priceNumber = extractPriceNumber(motorcycle.value.price)
+
+  // Update solicitudStore.solicitud (similar structure to original solicitudStore.js)
+  solicitudStore.solicitud.motorcycle_id = motorcycleId
+  solicitudStore.solicitud.brand_motorcycle = brand
+  solicitudStore.solicitud.model_motorcycle = model
+  solicitudStore.solicitud.year_motorcycle = year
+  solicitudStore.solicitud.invoice_motorcycle_value = priceNumber
+}
+
 // Fetch motorcycle details
 const fetchMotorcycleDetails = async () => {
   try {
@@ -600,6 +638,12 @@ const fetchMotorcycleDetails = async () => {
       if (!motorcycle.value.year) {
         motorcycle.value.year = new Date().getFullYear()
       }
+
+      // Save to motorcycleStore.form
+      saveToMotorcycleStore()
+      
+      // Save to solicitudStore.solicitud
+      saveToSolicitudStore()
     } else {
       throw new Error('Motorcycle not found')
     }

@@ -119,7 +119,14 @@ export const useClientStore = defineStore("clientStore", {
       client_data.user_id = user_id;
       client_data.flow_process = flowProcess;
       client_data.finva_user_id = finvaUserId;
-      const response = await $axios.post("/cliente", client_data);
+      
+      // Clean the data: convert empty strings to null for optional fields
+      // This is especially important for date fields which expect null, not empty strings
+      const cleaned_data = this.cleanClientData(client_data);
+      
+      // FastAPI endpoint: /api/client/cliente
+      // baseURL already includes /api, so we use /client/cliente
+      const response = await $axios.post("/client/cliente", cleaned_data);
       this.client.id = response.data.cliente_id;
       return this.client.id;
     },
@@ -177,9 +184,15 @@ export const useClientStore = defineStore("clientStore", {
       const { $axios } = useNuxtApp();
       const { id, ...client_data } = this.client;
       client_data.user_id = user_id;
+      
+      // Clean the data: convert empty strings to null for optional fields
+      const cleaned_data = this.cleanClientData(client_data);
+      
+      // FastAPI endpoint: /api/client/cliente/{cliente_id}
+      // baseURL already includes /api, so we use /client/cliente/{cliente_id}
       const response = await $axios.put(
-        `/cliente/${this.client.id}`,
-        client_data
+        `/client/cliente/${this.client.id}`,
+        cleaned_data
       );
       return response.data;
     },
@@ -208,7 +221,8 @@ export const useClientStore = defineStore("clientStore", {
      */
     async getClient() {
       const { $axios } = useNuxtApp();
-      const response = await $axios.get("/api/client/validate_client", {
+      // baseURL already includes /api, so we use /client/validate_client
+      const response = await $axios.get("/client/validate_client", {
         params: {
           email: this.client.email,
           phone: this.client.phone,
@@ -458,6 +472,75 @@ export const useClientStore = defineStore("clientStore", {
         );
         return response.data;
       }
+    },
+
+    /**
+     * Cleans client data before sending to API:
+     * - Converts empty strings to null for optional fields
+     * - Ensures date fields are either valid dates or null (not empty strings)
+     * - Removes undefined values
+     * @param {Object} data - The client data to clean
+     * @returns {Object} Cleaned client data
+     */
+    cleanClientData(data) {
+      const cleaned = { ...data };
+      
+      // List of fields that should be null instead of empty string
+      const optionalFields = [
+        'second_name',
+        'first_last_name',
+        'second_last_name',
+        'carrier',
+        'born_state',
+        'street_address',
+        'zip_code',
+        'suburb_colonia',
+        'ciudad',
+        'estado',
+        'interior_number',
+        'id_type',
+        'id_number',
+        'id_expiration_date', // Critical: date field must be null, not empty string
+        'marital_status',
+        'level_studies',
+        'profesion',
+        'housing_status',
+        'rfc',
+        'curp',
+        'time_living_there',
+      ];
+      
+      // Date fields that must be null or valid date strings
+      const dateFields = ['birth_date', 'id_expiration_date'];
+      
+      // Clean optional fields
+      optionalFields.forEach(field => {
+        if (cleaned[field] === '' || cleaned[field] === undefined) {
+          cleaned[field] = null;
+        }
+      });
+      
+      // Clean date fields specifically
+      dateFields.forEach(field => {
+        if (cleaned[field] === '' || cleaned[field] === undefined) {
+          cleaned[field] = null;
+        } else if (cleaned[field] && typeof cleaned[field] === 'string') {
+          // Ensure date strings are valid format (YYYY-MM-DD)
+          const dateStr = cleaned[field].trim();
+          if (dateStr === '' || dateStr === '0000-00-00' || dateStr === 'null') {
+            cleaned[field] = null;
+          }
+        }
+      });
+      
+      // Remove undefined values
+      Object.keys(cleaned).forEach(key => {
+        if (cleaned[key] === undefined) {
+          delete cleaned[key];
+        }
+      });
+      
+      return cleaned;
     },
 
     resetStore() {
